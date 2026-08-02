@@ -1,9 +1,9 @@
-# server.py — the backend. Holds the API key, talks to Anthropic, answers the browser.
+# server.py — бекендът. Пази API ключа, говори с Anthropic, отговаря на браузъра.
 #
-# Run it with:   uvicorn server:app --reload
-# It listens on   http://localhost:8000
+# Локално:   python -m uvicorn server:app --reload
+# На Render:  Render използва Start Command-а автоматично (виж по-долу).
 #
-# Install once:   pip install fastapi "uvicorn[standard]" anthropic
+# Инсталиране локално:  pip install fastapi "uvicorn[standard]" anthropic
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,11 +11,12 @@ from pydantic import BaseModel
 from anthropic import Anthropic
 
 app = FastAPI()
-client = Anthropic()  # reads ANTHROPIC_API_KEY from your environment
+client = Anthropic()  # чете ANTHROPIC_API_KEY от средата
 
-# The browser and the server run on different ports during development,
-# so the browser needs permission to call the server. This grants it.
-# For a real deployed app, replace "*" with your actual website's address.
+# Браузърът и сървърът са на различни адреси, затова браузърът се нуждае
+# от разрешение да вика сървъра. Когато качиш страницата на твоя домейн,
+# за по-сигурно замени "*" с адреса на сайта ти,
+# напр. "https://martin.hristov.website".
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,16 +30,21 @@ SYSTEM = """Ти си учител по математика. Пред теб е
 Можеш да използваш Markdown и LaTeX между $...$ — отговорът се показва в браузър."""
 
 
-# This describes the shape of what the browser sends: an image and a question.
 class Ask(BaseModel):
     image_base64: str
     question: str
 
 
+@app.get("/")
+def health():
+    # Проста проверка, че сървърът е жив — отваряш адреса и виждаш това.
+    return {"status": "ok"}
+
+
 @app.post("/ask")
 def ask(body: Ask):
     resp = client.messages.create(
-        model="claude-haiku-4-5-20251001",   # cheap model for the constant Q&A
+        model="claude-haiku-4-5-20251001",
         max_tokens=1500,
         system=SYSTEM,
         messages=[{
