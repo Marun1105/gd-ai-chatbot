@@ -230,7 +230,8 @@ bool AIClient::canSendEvent(Priority priority) {
     switch (priority) {
         case Priority::Always: return true;
         // Stops a burst of tiny new bests (3%, 5%, 8%...) on a fresh level
-        case Priority::Important: return elapsed >= std::chrono::seconds(4);
+        // from spamming, and from tripping the proxy's per-player limit
+        case Priority::Important: return elapsed >= std::chrono::seconds(8);
         case Priority::CloseCall: return elapsed >= cooldown / 2;
         case Priority::Normal: {
             if (elapsed < cooldown) return false;

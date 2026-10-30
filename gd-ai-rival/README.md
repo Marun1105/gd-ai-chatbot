@@ -85,7 +85,9 @@ npm run typecheck
 
 ### Option A: GitHub Actions (easiest, no local toolchain)
 
-Pushing changes under `gd-ai-rival/mod/` runs `.github/workflows/build-ai-rival-mod.yml`, which builds Windows, Android32 and Android64 with Geode's official action. Download the **AI Rival mod** artifact from the workflow run: it contains one `marun1105.ai-rival.geode` that works on all three. You can also start it by hand from the Actions tab ("Run workflow").
+Pushing changes under `gd-ai-rival/mod/` runs `.github/workflows/build-ai-rival-mod.yml`, which builds the mod with Geode's official action. Download the **AI Rival mod** artifact from the workflow run: it contains one `marun1105.ai-rival.geode` covering every platform that was built. You can also start it by hand from the Actions tab ("Run workflow").
+
+> **Windows build and the repo name.** GitHub's Windows runners check out into `D:\a\<repo>\<repo>`, and Windows can't create a folder whose name ends in a dot. While the repository is called `my-project.`, the workflow therefore builds only **Android32 + Android64** and skips Windows. Rename the repo (GitHub → Settings → Repository name, e.g. `my-project`; old links redirect) and the Windows build switches on by itself, with no workflow change needed. Until then, build the Windows version locally (Option B).
 
 ### Option B: build locally
 

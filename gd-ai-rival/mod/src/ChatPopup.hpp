@@ -12,7 +12,7 @@ public:
 protected:
     ~ChatPopup() override;
 
-    bool init();
+    bool init() override;
     void refresh();
     void focusInput(float);
     void onSend(cocos2d::CCObject*);
