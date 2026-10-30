@@ -1,0 +1,94 @@
+#pragma once
+
+#include <Geode/Geode.hpp>
+#include <Geode/utils/async.hpp>
+#include <Geode/utils/web.hpp>
+
+#include <chrono>
+#include <deque>
+#include <functional>
+#include <random>
+#include <string>
+#include <vector>
+
+// Owns the conversation with the proxy: the rolling memory, the in-flight
+// request, and the rules that decide which game events deserve a reply.
+// One instance lives for the whole game session; memory resets per level.
+class AIClient {
+public:
+    struct Turn {
+        bool fromAI;
+        // What the AI sees, e.g. "[PLAYER] hi (attempt 3, best 41%)"
+        std::string text;
+        // What the chat popup shows, e.g. "You: hi"
+        std::string display;
+    };
+
+    struct LevelInfo {
+        std::string name;
+        int id = 0;
+        int bestPercent = 0;
+        int totalAttempts = 0;
+        bool platformer = false;
+    };
+
+    static AIClient& get();
+
+    void startLevel(LevelInfo info);
+    void endLevel();
+    bool isActive() const;
+
+    void sendChat(std::string const& message);
+
+    void onLevelStart();
+    void onDeath(int percent, int attempt, bool practice);
+    void onComplete(int attempt, bool practice);
+
+    bool isWaiting() const;
+    bool isWaitingForChat() const;
+    std::deque<Turn> const& getMemory() const;
+    std::string getName() const;
+    // Why the last chat message got no reply, or empty
+    std::string const& getLastChatError() const;
+
+    // Called whenever memory or the waiting state changes (used by the chat popup)
+    void setUpdateCallback(std::function<void()> callback);
+
+private:
+    enum class Priority {
+        // Ordinary deaths: cooldown + random chance
+        Normal,
+        // Deaths close to the best: half cooldown, no dice roll
+        CloseCall,
+        // New bests: short minimum gap, may replace a pending comment
+        Important,
+        // Level start and completion: always sent, may replace a pending comment
+        Always,
+    };
+
+    AIClient();
+
+    bool canSendEvent(Priority priority);
+    void sendEvent(std::string text, std::string display);
+    void send(std::string text, std::string display, bool isChat);
+    void onResponse(geode::utils::web::WebResponse const& response, Turn userTurn, bool isChat);
+    void remember(Turn userTurn, std::string reply);
+    void notifyUpdate();
+    std::string const& getPlayerID();
+    std::string statusLine() const;
+
+    geode::async::TaskHolder<geode::utils::web::WebResponse> m_request;
+    bool m_requestIsChat = false;
+    std::string m_lastChatError;
+    std::deque<Turn> m_memory;
+    LevelInfo m_level;
+    bool m_active = false;
+    // Bumped on every level change so late replies from an old level are dropped
+    unsigned m_generation = 0;
+    int m_attempt = 0;
+    std::vector<int> m_unreportedDeaths;
+    std::chrono::steady_clock::time_point m_lastSent{};
+    std::function<void()> m_onUpdate;
+    std::string m_playerID;
+    std::mt19937 m_rng;
+};
