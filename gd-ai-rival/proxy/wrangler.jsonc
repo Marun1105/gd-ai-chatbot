@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gd-ai-rival",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+
+  // One global rate limiter (SQLite-backed, works on the Workers free plan)
+  "durable_objects": {
+    "bindings": [{ "name": "GUARD", "class_name": "Guard" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Guard"] }],
+
+  // ANTHROPIC_API_KEY is a secret: npx wrangler secret put ANTHROPIC_API_KEY
+  "vars": {
+    // claude-haiku-5-5 is ~40x cheaper per message if cost matters more than wit
+    "MODEL": "claude-opus-5-5",
+
+    // Comma-separated level IDs the proxy will answer for. Empty = any level.
+    "ALLOWED_LEVEL_IDS": "",
+
+    // "false" ignores the personality setting players send and always uses DEFAULT_PERSONA
+    "ALLOW_CUSTOM_PERSONA": "true",
+    "DEFAULT_PERSONA": "You are Rival, a cocky Geometry Dash player who thinks they are better than the player. Trash-talk silly deaths with playful roasts, act annoyed when they make progress, and give grudging respect when they get a new best or beat the level. Keep it playful, never hateful.",
+
+    // Spending guards. Each allowed request is one model call.
+    "PLAYER_PER_MINUTE": "8",
+    "IP_PER_MINUTE": "20",
+    "PLAYER_PER_DAY": "200",
+    "GLOBAL_PER_DAY": "1000"
+  }
+}
