@@ -8,7 +8,7 @@
 	"name": "AI Rival",
 	"version": "v1.0.0",
 	"developer": "marun1105",
-	"description": "Chat with an AI rival while you play, and let it react to your deaths, new bests and completions.",
+	"description": "Chat with an AI rival while you play. Works with Claude, ChatGPT, Gemini, Grok, Groq and more using your own API key (free options included).",
 	"tags": ["gameplay", "online", "interface"],
 	"dependencies": {
 		"geode.node-ids": ">=v1.23.3"
@@ -18,11 +18,21 @@
 			"type": "title",
 			"name": "Connection"
 		},
-		"proxy-url": {
-			"type": "string",
-			"name": "Proxy URL",
-			"description": "The <cy>/chat</c> endpoint of your AI proxy, for example <cg>https://gd-ai-rival.yourname.workers.dev/chat</c>. The mod never talks to the AI provider directly.",
-			"default": ""
+		"connection": {
+			"type": "button",
+			"name": "AI Connection",
+			"description": "Pick which AI to use and add your API key.\n\n<cg>Free:</c> Gemini (Google), Groq, OpenRouter's free models, or Ollama on your own PC.\n<co>Paid:</c> Claude, ChatGPT, Grok.\n\nThe mod page (the <cy>i</c> button) has a step-by-step guide for getting a key from each one. Your key stays on this device and is only sent to the AI you pick.",
+			"buttons": {
+				"open": "Set Up"
+			}
+		},
+		"daily-limit": {
+			"type": "int",
+			"name": "Daily Message Limit",
+			"description": "Most messages this device sends to the AI per day, so a long session can't run up your bill. <cy>0</c> means no limit.",
+			"default": 200,
+			"min": 0,
+			"max": 5000
 		},
 		"character-title": {
 			"type": "title",
@@ -35,11 +45,18 @@
 			"default": "Rival",
 			"filter": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-."
 		},
-		"personality": {
+		"personality-preset": {
 			"type": "string",
 			"name": "Personality",
-			"description": "How the AI should behave, up to 600 characters. This is sent to the proxy as the character description. The proxy always adds its own rules on top (short replies, plain text, no hateful content), and the proxy owner can choose to ignore this setting.",
-			"default": "You are Rival, a cocky Geometry Dash player who thinks they are better than the player. Trash-talk silly deaths with playful roasts, act annoyed when they make progress, and give grudging respect when they get a new best or beat the level. Keep it playful, never hateful."
+			"description": "<cy>Rival</c>: cocky trash talk. <cy>Coach</c>: hype and tips. <cy>Chill</c>: laid-back friend. <cy>Sarcastic</c>: deadpan narrator. <cy>Custom</c>: write your own below.",
+			"default": "Rival",
+			"one-of": ["Rival", "Coach", "Chill", "Sarcastic", "Custom"]
+		},
+		"custom-personality": {
+			"type": "string",
+			"name": "Custom Personality",
+			"description": "Used when Personality is <cy>Custom</c>. Describe who the AI is and how it talks, up to 600 characters. Short replies and no hateful content are always enforced on top.",
+			"default": ""
 		},
 		"memory-size": {
 			"type": "int",

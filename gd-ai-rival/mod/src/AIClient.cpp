@@ -1,29 +1,15 @@
 #include "AIClient.hpp"
+#include "Prompt.hpp"
 #include "SpeechBubble.hpp"
+#include "Text.hpp"
 
 #include <fmt/ranges.h>
 
 using namespace geode::prelude;
 
-namespace {
-    // GD's bitmap fonts only have printable ASCII, so anything else would
-    // render as garbage. The proxy already maps smart quotes etc. to ASCII.
-    std::string toDisplayable(std::string_view text) {
-        std::string out;
-        out.reserve(text.size());
-        for (char ch : text) {
-            auto c = static_cast<unsigned char>(ch);
-            if (c == '\n' || c == '\r' || c == '\t') {
-                if (!out.empty() && out.back() != ' ') out += ' ';
-            }
-            else if (c >= 0x20 && c < 0x7f) {
-                out += ch;
-            }
-        }
-        while (!out.empty() && out.back() == ' ') out.pop_back();
-        return out;
-    }
+using text::toDisplayable;
 
+namespace {
     bool setting(std::string_view key) {
         return Mod::get()->getSettingValue<bool>(key);
     }
@@ -114,7 +100,23 @@ void AIClient::sendChat(std::string const& message) {
 }
 
 void AIClient::onLevelStart() {
-    if (!m_active || !setting("auto-reactions") || !setting("greet-on-start")) return;
+    if (!m_active) return;
+
+    // First level of the session without a working setup: say how to fix it, once.
+    // Next frame, because the level isn't in its scene yet while it initialises.
+    if (!m_warnedAboutSetup && !providers::loadCurrent().missing().empty()) {
+        m_warnedAboutSetup = true;
+        geode::queueInMainThread([name = this->getName()] {
+            SpeechBubble::show(
+                name,
+                "I'm not connected yet! Pause and tap the chat button, then the gear, to pick an AI and add your key.",
+                true
+            );
+        });
+        return;
+    }
+
+    if (!setting("auto-reactions") || !setting("greet-on-start")) return;
     if (!this->canSendEvent(Priority::Always)) return;
 
     std::string text;
@@ -252,31 +254,34 @@ void AIClient::send(std::string text, std::string display, bool isChat) {
         m_lastChatError.clear();
     }
 
-    auto url = std::string(utils::string::trim(Mod::get()->getSettingValue<std::string>("proxy-url")));
-    if (url.empty()) {
+    auto connection = providers::loadCurrent();
+    if (auto missing = connection.missing(); !missing.empty()) {
         if (isChat) {
-            m_lastChatError = "No proxy URL set. Add it in the AI Rival mod settings.";
+            m_lastChatError = fmt::format("Add {} first: tap the gear in this chat.", missing);
             SpeechBubble::show(this->getName(), m_lastChatError, true);
             this->notifyUpdate();
         }
         return;
     }
 
-    auto history = matjson::Value::array();
-    for (auto const& turn : m_memory) {
-        history.push(matjson::makeObject({
-            { "role", turn.fromAI ? "assistant" : "user" },
-            { "content", turn.text },
-        }));
+    if (!this->takeDailyMessage()) {
+        if (isChat) {
+            m_lastChatError = "Daily message limit reached. You can raise it in the mod settings.";
+            SpeechBubble::show(this->getName(), m_lastChatError, true);
+            this->notifyUpdate();
+        }
+        return;
     }
 
-    auto body = matjson::makeObject({
-        { "player_id", this->getPlayerID() },
-        { "level_id", m_level.id },
-        { "persona", Mod::get()->getSettingValue<std::string>("personality") },
-        { "history", std::move(history) },
-        { "message", text },
-    });
+    ChatPayload payload;
+    payload.persona = prompt::persona(this->getName());
+    payload.system = prompt::system(payload.persona);
+    for (auto const& turn : m_memory) {
+        payload.history.emplace_back(turn.fromAI, turn.text);
+    }
+    payload.message = text;
+    payload.playerID = this->getPlayerID();
+    payload.levelID = m_level.id;
 
     m_lastSent = std::chrono::steady_clock::now();
     m_requestIsChat = isChat;
@@ -289,61 +294,63 @@ void AIClient::send(std::string text, std::string display, bool isChat) {
     // Spawning cancels whatever was pending (only ever an event comment, see canSendEvent)
     m_request.spawn(
         "AI Rival request",
-        web::WebRequest()
-            .timeout(std::chrono::seconds(30))
-            .bodyJSON(body)
-            .post(std::move(url)),
-        [this, generation = m_generation, userTurn = std::move(userTurn), isChat](web::WebResponse response) mutable {
+        providers::sendChat(connection, payload),
+        [this, generation = m_generation, connection, userTurn = std::move(userTurn), isChat](web::WebResponse response) mutable {
             // Player left the level (or entered another) while we were waiting
             if (generation != m_generation || !PlayLayer::get()) return;
-            this->onResponse(response, std::move(userTurn), isChat);
+            this->onResponse(connection, response, std::move(userTurn), isChat);
         }
     );
     this->notifyUpdate();
 }
 
-void AIClient::onResponse(web::WebResponse const& response, Turn userTurn, bool isChat) {
-    auto json = response.json();
-
-    if (!response.ok()) {
-        std::string message;
-        if (json.isOk()) {
-            message = toDisplayable(json.unwrap()["message"].asString().unwrapOr(""));
-        }
-        log::warn(
-            "Proxy request failed (HTTP {}): {} {}",
-            response.code(), message, response.errorMessage()
-        );
+void AIClient::onResponse(Connection const& connection, web::WebResponse const& response, Turn userTurn, bool isChat) {
+    auto result = providers::parseChat(connection, response);
+    if (result.isErr()) {
+        auto error = result.unwrapErr();
+        // Never log the request itself: it carries the player's API key
+        log::warn("{} request failed (HTTP {}): {}", connection.provider->name, response.code(), error);
         if (isChat) {
-            if (message.empty()) {
-                message = response.code() > 0
-                    ? fmt::format("Couldn't reach the AI (HTTP {}).", response.code())
-                    : "Couldn't reach the AI. Check the proxy URL and your connection.";
-            }
-            m_lastChatError = message;
-            SpeechBubble::show(this->getName(), message, true);
+            m_lastChatError = error;
+            SpeechBubble::show(this->getName(), error, true);
         }
         this->notifyUpdate();
         return;
     }
 
-    std::string reply;
-    if (json.isOk()) {
-        reply = toDisplayable(json.unwrap()["reply"].asString().unwrapOr(""));
-    }
-    if (reply.empty()) {
-        log::warn("Proxy returned no reply: {}", response.string().unwrapOr("<binary>"));
-        if (isChat) {
-            m_lastChatError = "The AI had nothing to say. Try again.";
-            SpeechBubble::show(this->getName(), m_lastChatError, true);
-        }
-        this->notifyUpdate();
-        return;
-    }
-
+    auto reply = result.unwrap();
     this->remember(std::move(userTurn), reply);
     SpeechBubble::show(this->getName(), reply);
     this->notifyUpdate();
+}
+
+bool AIClient::takeDailyMessage() {
+    auto limit = intSetting("daily-limit");
+    if (limit <= 0) return true;
+
+    // UTC day number, so the count resets at the same moment everywhere
+    auto today = std::chrono::duration_cast<std::chrono::hours>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count() / 24;
+
+    auto mod = Mod::get();
+    if (mod->getSavedValue<int64_t>("usage-day") != today) {
+        mod->setSavedValue<int64_t>("usage-day", today);
+        mod->setSavedValue<int64_t>("usage-count", 0);
+    }
+    auto used = mod->getSavedValue<int64_t>("usage-count");
+    if (used >= limit) return false;
+    mod->setSavedValue<int64_t>("usage-count", used + 1);
+    return true;
+}
+
+void AIClient::connectionChanged() {
+    m_lastChatError.clear();
+    this->notifyUpdate();
+}
+
+std::string AIClient::missingSetup() const {
+    return providers::loadCurrent().missing();
 }
 
 void AIClient::remember(Turn userTurn, std::string reply) {

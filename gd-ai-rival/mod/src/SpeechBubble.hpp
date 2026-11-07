@@ -16,7 +16,7 @@ protected:
     static SpeechBubble* create(std::string const& name, std::string const& text, Style style);
     static void attach(SpeechBubble* bubble);
 
-    bool init(std::string const& name, std::string const& text, Style style);
+    bool initBubble(std::string const& name, std::string const& text, Style style);
     void fadeOut();
 
     geode::NineSlice* m_bg = nullptr;

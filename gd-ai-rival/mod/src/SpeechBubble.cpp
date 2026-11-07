@@ -20,7 +20,7 @@ void SpeechBubble::showTyping(std::string const& name) {
 
 SpeechBubble* SpeechBubble::create(std::string const& name, std::string const& text, Style style) {
     auto ret = new SpeechBubble();
-    if (ret->init(name, text, style)) {
+    if (ret->initBubble(name, text, style)) {
         ret->autorelease();
         return ret;
     }
@@ -41,7 +41,7 @@ void SpeechBubble::attach(SpeechBubble* bubble) {
     scene->addChild(bubble, BUBBLE_Z);
 }
 
-bool SpeechBubble::init(std::string const& name, std::string const& text, Style style) {
+bool SpeechBubble::initBubble(std::string const& name, std::string const& text, Style style) {
     if (!CCNode::init()) return false;
 
     this->setID("speech-bubble"_spr);

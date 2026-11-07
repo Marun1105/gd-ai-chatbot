@@ -4,6 +4,7 @@
 
 #include "AIClient.hpp"
 #include "ChatPopup.hpp"
+#include "ConnectionPopup.hpp"
 
 using namespace geode::prelude;
 
@@ -44,6 +45,11 @@ namespace {
 }
 
 $on_mod(Loaded) {
+    // "Set Up" button on the mod's settings page
+    ButtonSettingPressedEventV3(Mod::get(), "connection").listen([](std::string_view) {
+        ConnectionPopup::create()->show();
+    }).leak();
+
 #ifdef GEODE_IS_DESKTOP
     listenForKeybindSettingPresses("open-chat", [](Keybind const&, bool down, bool repeat, double) {
         if (!down || repeat) return false;

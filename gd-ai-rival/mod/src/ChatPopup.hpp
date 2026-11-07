@@ -16,6 +16,7 @@ protected:
     void refresh();
     void focusInput(float);
     void onSend(cocos2d::CCObject*);
+    void onConnection(cocos2d::CCObject*);
     void send();
 
     // Enter key, on platforms where GD reports it

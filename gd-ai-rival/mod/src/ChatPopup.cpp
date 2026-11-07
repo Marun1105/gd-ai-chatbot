@@ -1,5 +1,6 @@
 #include "ChatPopup.hpp"
 #include "AIClient.hpp"
+#include "ConnectionPopup.hpp"
 
 using namespace geode::prelude;
 
@@ -82,6 +83,12 @@ bool ChatPopup::init() {
     m_sendBtn = CCMenuItemSpriteExtra::create(sendSpr, this, menu_selector(ChatPopup::onSend));
     m_buttonMenu->addChildAtPosition(m_sendBtn, Anchor::Bottom, ccp(135, 32));
 
+    // Gear in the top right opens the AI Connection setup
+    auto gearSpr = CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png");
+    gearSpr->setScale(.55f);
+    auto gearBtn = CCMenuItemSpriteExtra::create(gearSpr, this, menu_selector(ChatPopup::onConnection));
+    m_buttonMenu->addChildAtPosition(gearBtn, Anchor::TopRight, ccp(-3, -3));
+
     client.setUpdateCallback([this] { this->refresh(); });
     this->refresh();
 
@@ -122,9 +129,15 @@ void ChatPopup::refresh() {
     }
 
     if (lines.empty()) {
-        m_history->setRichText(fmt::format(
-            "<c-9a9a9a>{} is watching your run. Say something!</c>", client.getName()
-        ));
+        auto missing = client.missingSetup();
+        m_history->setRichText(missing.empty()
+            ? fmt::format("<c-9a9a9a>{} is watching your run. Say something!</c>", client.getName())
+            : fmt::format(
+                "<c-9a9a9a>{} isn't connected to an AI yet.</c>\n"
+                "Tap the <cy>gear</c> in the top right to pick one (some are free) and add {}.",
+                client.getName(), missing
+            )
+        );
     }
     else {
         // Drop the oldest lines until the newest ones fit in the box
@@ -162,6 +175,10 @@ void ChatPopup::refresh() {
 
 void ChatPopup::onSend(CCObject*) {
     this->send();
+}
+
+void ChatPopup::onConnection(CCObject*) {
+    ConnectionPopup::create()->show();
 }
 
 void ChatPopup::textInputReturn(CCTextInputNode*) {
