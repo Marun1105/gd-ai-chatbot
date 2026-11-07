@@ -24,7 +24,7 @@ You need Node.js 18+, a free [Cloudflare account](https://dash.cloudflare.com/si
 cd gd-ai-rival/proxy
 npm install
 npx wrangler login                         # opens the browser once
-npx wrangler secret put ANTHROPIC_API_KEY  # paste your key when asked
+npx wrangler secret put ANTHROPIC_API_KEY  # paste your key when asked (CLAUDE_API_KEY works too)
 npx wrangler deploy
 ```
 

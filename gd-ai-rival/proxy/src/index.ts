@@ -7,6 +7,8 @@ export { Guard };
 
 export interface Env {
   ANTHROPIC_API_KEY?: string;
+  // Accepted as an alias, since "Claude API key" is what the Console calls it
+  CLAUDE_API_KEY?: string;
   // Optional, e.g. a Cloudflare AI Gateway URL for logging/analytics
   ANTHROPIC_BASE_URL?: string;
   GUARD: DurableObjectNamespace<Guard>;
@@ -69,7 +71,8 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 async function handleChat(request: Request, env: Env): Promise<Response> {
-  if (!env.ANTHROPIC_API_KEY) {
+  const apiKey = env.ANTHROPIC_API_KEY || env.CLAUDE_API_KEY;
+  if (!apiKey) {
     console.error("ANTHROPIC_API_KEY is not set. Run: npx wrangler secret put ANTHROPIC_API_KEY");
     return json({ error: "proxy_misconfigured", message: "The AI proxy is misconfigured." }, 500);
   }
@@ -106,7 +109,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   }
 
   try {
-    return json({ reply: await askClaude(env, env.ANTHROPIC_API_KEY, chat) });
+    return json({ reply: await askClaude(env, apiKey, chat) });
   } catch (err) {
     return upstreamError(err);
   }
