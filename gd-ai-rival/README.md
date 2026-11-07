@@ -1,6 +1,6 @@
 # AI Rival: talk to an AI while you play Geometry Dash
 
-A Geode mod for Geometry Dash 2.2081 (Windows and Android) that puts an AI in your levels. You can chat with it, and it reacts on its own to your deaths, new bests and completions. Replies show up in a speech bubble that fades out after a few seconds.
+A Geode mod for Geometry Dash 2.2091 (Windows and Android) that puts an AI in your levels. You can chat with it, and it reacts on its own to your deaths, new bests and completions. Replies show up in a speech bubble that fades out after a few seconds.
 
 Each player connects their **own AI**: Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, or any OpenAI-compatible API. Several of these are free. Level creators can instead run a **proxy** that pays for the AI, so their players don't need a key.
 
@@ -11,7 +11,7 @@ Creator proxy:  GD + mod  --HTTPS-->  Cloudflare Worker (holds the creator's key
 
 | Folder | What it is |
 |---|---|
-| `mod/` | Geode mod (C++23, Geode SDK v5.11) |
+| `mod/` | Geode mod (C++23, Geode SDK v6) |
 | `proxy/` | Optional Cloudflare Worker for creators who pay for the AI themselves |
 | `../.github/workflows/build-ai-rival-mod.yml` | GitHub Actions build for Windows + Android |
 
@@ -43,7 +43,7 @@ Pushing changes under `gd-ai-rival/mod/` runs `.github/workflows/build-ai-rival-
    ```
    The output is `build/marun1105.ai-rival.geode`.
 
-The mod targets **GD 2.2081 with Geode v5.11.2** (`mod.json` → `"geode"`). If you install a newer Geode SDK, bump that field to match. To publish under your own name, change `id` and `developer` in `mod.json`.
+The mod targets **GD 2.2091 with Geode v6.0.0-alpha.1** (`mod.json` → `"geode"`). If you install a newer Geode SDK, bump that field to match. To publish under your own name, change `id` and `developer` in `mod.json`.
 
 ---
 

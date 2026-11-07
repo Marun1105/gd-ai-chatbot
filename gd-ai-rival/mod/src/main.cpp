@@ -65,8 +65,8 @@ class $modify(AIPlayLayer, PlayLayer) {
         bool deathReported = false;
     };
 
-    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
-        if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
+    bool init(GJGameLevel* level, bool dontCreateObjects) {
+        if (!PlayLayer::init(level, dontCreateObjects)) return false;
 
         auto& client = AIClient::get();
         if (!isLevelAllowed(level->m_levelID.value())) {
