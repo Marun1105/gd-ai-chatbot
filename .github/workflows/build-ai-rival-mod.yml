@@ -1,0 +1,60 @@
+name: Build AI Rival mod
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "gd-ai-rival/mod/**"
+      - ".github/workflows/build-ai-rival-mod.yml"
+
+jobs:
+  android:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [Android32, Android64]
+
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the mod
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          path: gd-ai-rival/mod
+          combine: true
+          target: ${{ matrix.target }}
+
+  windows:
+    # Windows runners check out into D:\a\<repo>\<repo>, and Windows can't
+    # create folders whose name ends in ".", so this job can only run once
+    # the repository is renamed (e.g. "my-project." -> "my-project").
+    if: ${{ !endsWith(github.repository, '.') }}
+    name: Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the mod
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          path: gd-ai-rival/mod
+          combine: true
+
+  package:
+    name: Package builds
+    runs-on: ubuntu-latest
+    needs: [android, windows]
+    if: ${{ !cancelled() && needs.android.result == 'success' && (needs.windows.result == 'success' || needs.windows.result == 'skipped') }}
+
+    steps:
+      - uses: geode-sdk/build-geode-mod/combine@main
+        id: build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: AI Rival mod
+          path: ${{ steps.build.outputs.build-output }}

@@ -1,0 +1,163 @@
+{
+	"geode": "5.11.2",
+	"gd": {
+		"win": "2.2081",
+		"android": "2.2081"
+	},
+	"id": "marun1105.ai-rival",
+	"name": "AI Rival",
+	"version": "v1.0.0",
+	"developer": "marun1105",
+	"description": "Chat with an AI rival while you play, and let it react to your deaths, new bests and completions.",
+	"tags": ["gameplay", "online", "interface"],
+	"dependencies": {
+		"geode.node-ids": ">=v1.23.3"
+	},
+	"settings": {
+		"connection-title": {
+			"type": "title",
+			"name": "Connection"
+		},
+		"proxy-url": {
+			"type": "string",
+			"name": "Proxy URL",
+			"description": "The <cy>/chat</c> endpoint of your AI proxy, for example <cg>https://gd-ai-rival.yourname.workers.dev/chat</c>. The mod never talks to the AI provider directly.",
+			"default": ""
+		},
+		"character-title": {
+			"type": "title",
+			"name": "Character"
+		},
+		"ai-name": {
+			"type": "string",
+			"name": "AI Name",
+			"description": "Name shown above the AI's speech bubble.",
+			"default": "Rival",
+			"filter": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-."
+		},
+		"personality": {
+			"type": "string",
+			"name": "Personality",
+			"description": "How the AI should behave, up to 600 characters. This is sent to the proxy as the character description. The proxy always adds its own rules on top (short replies, plain text, no hateful content), and the proxy owner can choose to ignore this setting.",
+			"default": "You are Rival, a cocky Geometry Dash player who thinks they are better than the player. Trash-talk silly deaths with playful roasts, act annoyed when they make progress, and give grudging respect when they get a new best or beat the level. Keep it playful, never hateful."
+		},
+		"memory-size": {
+			"type": "int",
+			"name": "Memory Size",
+			"description": "How many recent messages (yours, the game's and the AI's) are sent along so the AI remembers the run. Memory resets when you enter a new level.",
+			"default": 10,
+			"min": 2,
+			"max": 20
+		},
+		"controls-title": {
+			"type": "title",
+			"name": "Controls"
+		},
+		"open-chat": {
+			"type": "keybind",
+			"name": "Open Chat",
+			"description": "Pauses the level and opens the chat box.",
+			"default": "T",
+			"category": "gameplay",
+			"platforms": ["desktop"]
+		},
+		"show-ingame-button": {
+			"type": "bool",
+			"name": "In-Game Chat Button",
+			"description": "Shows a small chat button next to the pause button while playing. There is always a chat button in the pause menu as well.",
+			"default": {
+				"win": false,
+				"mac": false,
+				"android": true,
+				"ios": true
+			}
+		},
+		"reactions-title": {
+			"type": "title",
+			"name": "Game Reactions"
+		},
+		"auto-reactions": {
+			"type": "bool",
+			"name": "Auto Reactions",
+			"description": "Let the AI comment on its own when you die, get a new best or beat the level.",
+			"default": true
+		},
+		"greet-on-start": {
+			"type": "bool",
+			"name": "Greet On Level Start",
+			"description": "The AI says something when you enter a level.",
+			"default": true,
+			"enable-if": "auto-reactions"
+		},
+		"event-cooldown": {
+			"type": "int",
+			"name": "Death Comment Cooldown",
+			"description": "Minimum number of seconds between comments on ordinary deaths. New bests and completions ignore this and are always commented on.",
+			"default": 20,
+			"min": 5,
+			"max": 300,
+			"enable-if": "auto-reactions"
+		},
+		"death-reaction-chance": {
+			"type": "int",
+			"name": "Death Comment Chance",
+			"description": "Chance (in percent) that the AI comments on an ordinary death once the cooldown is over. Close calls near your best are always commented on.",
+			"default": 40,
+			"min": 0,
+			"max": 100,
+			"control": {
+				"slider": true,
+				"slider-step": 5
+			},
+			"enable-if": "auto-reactions"
+		},
+		"react-in-practice": {
+			"type": "bool",
+			"name": "React In Practice Mode",
+			"description": "Also comment on deaths and completions in practice mode and when starting from a start position.",
+			"default": false,
+			"enable-if": "auto-reactions"
+		},
+		"bubble-title": {
+			"type": "title",
+			"name": "Speech Bubble"
+		},
+		"bubble-position": {
+			"type": "string",
+			"name": "Bubble Position",
+			"description": "Where the AI's replies appear on screen.",
+			"default": "Top",
+			"one-of": ["Top", "Bottom"]
+		},
+		"bubble-duration": {
+			"type": "float",
+			"name": "Bubble Duration",
+			"description": "Base number of seconds a reply stays on screen. Longer replies stay a little longer.",
+			"default": 4.0,
+			"min": 2.0,
+			"max": 15.0,
+			"control": {
+				"slider": true,
+				"slider-step": 0.5
+			}
+		},
+		"level-lock-title": {
+			"type": "title",
+			"name": "Level Lock"
+		},
+		"level-lock": {
+			"type": "bool",
+			"name": "Only On Specific Levels",
+			"description": "Only activate the AI on the level IDs listed below.",
+			"default": false
+		},
+		"level-ids": {
+			"type": "string",
+			"name": "Level IDs",
+			"description": "Comma-separated list of level IDs, for example <cg>128, 97354251</c>. Unpublished levels from the editor have ID <cy>0</c>.",
+			"default": "",
+			"filter": "0123456789, ",
+			"enable-if": "level-lock"
+		}
+	}
+}
