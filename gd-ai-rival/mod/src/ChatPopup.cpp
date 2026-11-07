@@ -75,7 +75,8 @@ bool ChatPopup::init() {
     m_input = TextInput::create(260.f, "Say something...", "chatFont.fnt");
     m_input->setCommonFilter(CommonFilter::Any);
     m_input->setMaxCharCount(150);
-    m_input->setDelegate(this);
+    m_enterKey.owner = this;
+    m_input->setDelegate(&m_enterKey);
     m_mainLayer->addChildAtPosition(m_input, Anchor::Bottom, ccp(-45, 32));
 
     auto sendSpr = ButtonSprite::create("Send", "goldFont.fnt", "GJ_button_01.png", .8f);
@@ -181,12 +182,12 @@ void ChatPopup::onConnection(CCObject*) {
     ConnectionPopup::create()->show();
 }
 
-void ChatPopup::textInputReturn(CCTextInputNode*) {
-    this->send();
+void ChatPopup::EnterKeyDelegate::textInputReturn(CCTextInputNode*) {
+    owner->send();
 }
 
-void ChatPopup::enterPressed(CCTextInputNode*) {
-    this->send();
+void ChatPopup::EnterKeyDelegate::enterPressed(CCTextInputNode*) {
+    owner->send();
 }
 
 void ChatPopup::send() {

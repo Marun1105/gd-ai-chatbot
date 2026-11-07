@@ -4,7 +4,7 @@
 
 // Chat box opened from the pause menu, the in-game button or the keybind.
 // Shows the recent conversation and stays open so you can keep talking.
-class ChatPopup : public geode::Popup, public TextInputDelegate {
+class ChatPopup : public geode::Popup {
 public:
     static ChatPopup* create();
     static bool isOpen();
@@ -19,10 +19,15 @@ protected:
     void onConnection(cocos2d::CCObject*);
     void send();
 
-    // Enter key, on platforms where GD reports it
-    void textInputReturn(CCTextInputNode*) override;
-    void enterPressed(CCTextInputNode*) override;
+    // Sends on Enter, on platforms where GD reports it. A separate object,
+    // because in GD 2.2091 FLAlertLayer is already a TextInputDelegate.
+    struct EnterKeyDelegate : TextInputDelegate {
+        ChatPopup* owner = nullptr;
+        void textInputReturn(CCTextInputNode*) override;
+        void enterPressed(CCTextInputNode*) override;
+    };
 
+    EnterKeyDelegate m_enterKey;
     geode::TextInput* m_input = nullptr;
     geode::Label* m_history = nullptr;
     cocos2d::CCLabelBMFont* m_status = nullptr;
