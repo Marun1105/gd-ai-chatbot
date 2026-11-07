@@ -275,7 +275,7 @@ web::WebFuture providers::sendChat(Connection const& connection, ChatPayload con
     }
 }
 
-Result<std::string, std::string> providers::parseChat(Connection const& connection, web::WebResponse const& response) {
+Result<std::string, std::string> providers::parseChat(Connection const& connection, web::WebResponse const& response, size_t maxChars) {
     if (!response.ok()) {
         return Err(describeError(connection, response, false));
     }
@@ -313,7 +313,7 @@ Result<std::string, std::string> providers::parseChat(Connection const& connecti
         } break;
     }
 
-    auto reply = text::cleanReply(raw);
+    auto reply = text::cleanReply(raw, maxChars);
     if (reply.empty()) {
         return Err(std::string("The AI had nothing to say. Try again."));
     }

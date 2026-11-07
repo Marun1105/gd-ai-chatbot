@@ -4,8 +4,6 @@
 #include <utility>
 
 namespace {
-    constexpr size_t MAX_REPLY_CHARS = 220;
-
     // Common typographic characters models like to use, as UTF-8
     constexpr std::array<std::pair<std::string_view, std::string_view>, 9> ASCII_FOLDS {{
         { "‘", "'" }, { "’", "'" }, { "“", "\"" }, { "”", "\"" },
@@ -30,7 +28,7 @@ std::string text::toDisplayable(std::string_view text) {
     return out;
 }
 
-std::string text::cleanReply(std::string_view reply) {
+std::string text::cleanReply(std::string_view reply, size_t maxChars) {
     std::string folded;
     folded.reserve(reply.size());
     for (size_t i = 0; i < reply.size();) {
@@ -60,8 +58,8 @@ std::string text::cleanReply(std::string_view reply) {
         out = out.substr(1, out.size() - 2);
     }
 
-    if (out.size() > MAX_REPLY_CHARS) {
-        auto cut = out.substr(0, MAX_REPLY_CHARS);
+    if (out.size() > maxChars) {
+        auto cut = out.substr(0, maxChars);
         size_t lastEnd = std::string::npos;
         for (auto stop : { ". ", "! ", "? " }) {
             auto pos = cut.rfind(stop);
@@ -69,7 +67,7 @@ std::string text::cleanReply(std::string_view reply) {
                 lastEnd = pos;
             }
         }
-        if (lastEnd != std::string::npos && lastEnd > MAX_REPLY_CHARS / 2) {
+        if (lastEnd != std::string::npos && lastEnd > maxChars / 2) {
             out = cut.substr(0, lastEnd + 1);
         }
         else {

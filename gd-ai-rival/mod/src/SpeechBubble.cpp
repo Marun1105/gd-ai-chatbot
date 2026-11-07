@@ -1,26 +1,36 @@
 #include "SpeechBubble.hpp"
 
+#include <random>
+
 using namespace geode::prelude;
 
 namespace {
     constexpr float PADDING = 8.f;
-    constexpr float BODY_SCALE = .7f;
+    constexpr float AVATAR_SIZE = 30.f;
     constexpr float FADE_TIME = .4f;
+    // About 40 letters a second, quick enough not to hold up a fast level
+    constexpr float REVEAL_INTERVAL = .025f;
+    constexpr size_t BLIP_EVERY = 3;
     // Above the pause menu, so replies stay visible while paused
     constexpr int BUBBLE_Z = 1000;
+
+    std::mt19937& rng() {
+        static std::mt19937 gen(std::random_device{}());
+        return gen;
+    }
 }
 
-void SpeechBubble::show(std::string const& name, std::string const& text, bool isError) {
-    attach(create(name, text, isError ? Style::Error : Style::Reply));
+void SpeechBubble::show(Profile const& profile, std::string const& text, bool isError) {
+    attach(create(profile, text, isError ? Style::Error : Style::Reply));
 }
 
-void SpeechBubble::showTyping(std::string const& name) {
-    attach(create(name, "...", Style::Typing));
+void SpeechBubble::showTyping(Profile const& profile) {
+    attach(create(profile, "...", Style::Typing));
 }
 
-SpeechBubble* SpeechBubble::create(std::string const& name, std::string const& text, Style style) {
+SpeechBubble* SpeechBubble::create(Profile const& profile, std::string const& text, Style style) {
     auto ret = new SpeechBubble();
-    if (ret->initBubble(name, text, style)) {
+    if (ret->initBubble(profile, text, style)) {
         ret->autorelease();
         return ret;
     }
@@ -41,82 +51,185 @@ void SpeechBubble::attach(SpeechBubble* bubble) {
     scene->addChild(bubble, BUBBLE_Z);
 }
 
-bool SpeechBubble::initBubble(std::string const& name, std::string const& text, Style style) {
+CCNode* SpeechBubble::createAvatar(BubbleStyle const& style) {
+    auto gm = GameManager::get();
+    bool mine = style.avatar == AvatarMode::Player;
+    int icon = mine ? gm->getPlayerFrame() : style.avatarIcon;
+
+    auto player = SimplePlayer::create(icon);
+    player->updatePlayerFrame(icon, IconType::Cube);
+    player->setColors(
+        gm->colorForIdx(mine ? gm->getPlayerColor() : style.avatarColor1),
+        gm->colorForIdx(mine ? gm->getPlayerColor2() : style.avatarColor2)
+    );
+    // Cube icons are about 30 units across at scale 1
+    player->setScale(AVATAR_SIZE / 30.f * .9f);
+    return player;
+}
+
+bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, Style style) {
     if (!CCNode::init()) return false;
 
     this->setID("speech-bubble"_spr);
-
+    auto const& look = profile.bubble;
     auto winSize = CCDirector::get()->getWinSize();
-    float width = std::min(winSize.width - 40.f, 360.f);
 
-    m_nameLabel = Label::create(name, "goldFont.fnt");
+    float width = std::clamp(look.width, 150.f, winSize.width - 20.f);
+    bool hasAvatar = look.avatar != AvatarMode::Off;
+    float textLeft = PADDING + (hasAvatar ? AVATAR_SIZE + PADDING : 0.f);
+    float textWidth = width - textLeft - PADDING;
+    float textScale = std::clamp(look.textScale, .3f, 1.5f);
+
+    m_nameLabel = Label::create(profile.name, "goldFont.fnt");
     m_nameLabel->setScale(.5f);
     m_nameLabel->setAnchorPoint({ 0.f, 1.f });
+    m_nameLabel->setColor(look.nameColor);
 
-    m_bodyLabel = Label::create(text, "chatFont.fnt");
+    // Typing dots reserve room for "..." so the bubble doesn't resize as they cycle
+    m_bodyLabel = Label::create(text, look.font);
     m_bodyLabel->setAlignment(Label::Alignment::Left);
-    m_bodyLabel->setScale(BODY_SCALE);
-    m_bodyLabel->setMaxWidth((width - PADDING * 2) / BODY_SCALE);
+    m_bodyLabel->setScale(textScale);
+    m_bodyLabel->setMaxWidth(textWidth / textScale);
     m_bodyLabel->setAnchorPoint({ 0.f, 1.f });
     switch (style) {
-        case Style::Error: m_bodyLabel->setColor({ 255, 140, 140 }); break;
-        case Style::Typing: m_bodyLabel->setColor({ 190, 190, 190 }); break;
-        case Style::Reply: break;
+        case Style::Error: m_textColor = { 255, 140, 140 }; break;
+        case Style::Typing: m_textColor = { 190, 190, 190 }; break;
+        case Style::Reply: m_textColor = look.textColor; break;
     }
+    m_bodyLabel->setColor(m_textColor);
 
     float nameHeight = m_nameLabel->getScaledContentHeight();
     float bodyHeight = m_bodyLabel->getScaledContentHeight();
-    float height = PADDING + nameHeight + 3.f + bodyHeight + PADDING;
+    float height = std::max(
+        PADDING + nameHeight + 3.f + bodyHeight + PADDING,
+        hasAvatar ? AVATAR_SIZE + PADDING * 2 : 0.f
+    );
 
     this->setContentSize({ width, height });
     this->setAnchorPoint({ .5f, .5f });
 
     m_bg = NineSlice::create("square02b_001.png");
-    m_bg->setColor({ 0, 0, 0 });
-    m_bg->setOpacity(170);
+    m_bg->setColor({ look.background.r, look.background.g, look.background.b });
+    m_bg->setOpacity(look.background.a);
     m_bg->setScale(.4f);
     m_bg->setContentSize(CCSize(width, height) / .4f);
     m_bg->setAnchorPoint({ 0.f, 0.f });
     m_bg->setPosition({ 0.f, 0.f });
     this->addChild(m_bg);
 
-    m_nameLabel->setPosition({ PADDING, height - PADDING });
+    if (hasAvatar) {
+        m_avatar = this->createAvatar(look);
+        m_avatar->setPosition({ PADDING + AVATAR_SIZE / 2, height / 2 });
+        this->addChild(m_avatar);
+    }
+
+    m_nameLabel->setPosition({ textLeft, height - PADDING });
     this->addChild(m_nameLabel);
 
-    m_bodyLabel->setPosition({ PADDING, height - PADDING - nameHeight - 3.f });
+    m_bodyLabel->setPosition({ textLeft, height - PADDING - nameHeight - 3.f });
     this->addChild(m_bodyLabel);
 
-    bool atBottom = Mod::get()->getSettingValue<std::string>("bubble-position") == "Bottom";
-    this->setPosition({
-        winSize.width / 2,
-        atBottom ? 18.f + height / 2 : winSize.height - 28.f - height / 2
-    });
-
+    this->place(look);
     this->setScale(.9f);
     this->runAction(CCEaseBackOut::create(CCScaleTo::create(.15f, 1.f)));
 
-    float duration;
+    m_soundFile = style == Style::Reply ? profile.soundFile : "";
+    m_volume = std::clamp(profile.soundVolume, 0.f, 1.f);
+
+    float base = std::clamp(look.duration, 1.f, 20.f);
+    float readTime = std::min(base + text.size() * .04f, base + 8.f);
+
     if (style == Style::Typing) {
+        m_bodyLabel->setText(".");
+        this->schedule(schedule_selector(SpeechBubble::typingStep), .3f);
         // Just past the request timeout, in case the reply never arrives
-        duration = 35.f;
+        this->startTimer(35.f);
+    }
+    else if (style == Style::Reply && look.typewriter) {
+        // Hide every letter, then fade them in one by one; changing colours
+        // instead of text keeps the line wrapping from jumping around
+        m_charCount = m_bodyLabel->getCharCount();
+        for (size_t i = 0; i < m_charCount; i++) {
+            m_bodyLabel->setCharColor(i, { m_textColor.r, m_textColor.g, m_textColor.b, 0 });
+        }
+        m_holdTime = readTime;
+        this->schedule(schedule_selector(SpeechBubble::revealStep), REVEAL_INTERVAL);
     }
     else {
-        float base = Mod::get()->getSettingValue<double>("bubble-duration");
-        duration = std::min(base + text.size() * .04f, base + 8.f);
+        this->playBlip();
+        this->startTimer(readTime);
     }
-    this->runAction(CCSequence::create(
-        CCDelayTime::create(duration),
-        CCCallFunc::create(this, callfunc_selector(SpeechBubble::fadeOut)),
-        nullptr
-    ));
-
     return true;
 }
 
+void SpeechBubble::place(BubbleStyle const& look) {
+    auto winSize = CCDirector::get()->getWinSize();
+    auto size = this->getContentSize();
+
+    float left = 10.f + size.width / 2;
+    float right = winSize.width - 10.f - size.width / 2;
+    float center = winSize.width / 2;
+    // Top positions leave room for GD's progress bar
+    float top = winSize.height - 28.f - size.height / 2;
+    float bottom = 18.f + size.height / 2;
+
+    CCPoint pos;
+    switch (look.anchor) {
+        case BubbleAnchor::Top: pos = ccp(center, top); break;
+        case BubbleAnchor::Bottom: pos = ccp(center, bottom); break;
+        case BubbleAnchor::TopLeft: pos = ccp(left, top); break;
+        case BubbleAnchor::TopRight: pos = ccp(right, top); break;
+        case BubbleAnchor::BottomLeft: pos = ccp(left, bottom); break;
+        case BubbleAnchor::BottomRight: pos = ccp(right, bottom); break;
+    }
+    pos.x += look.offsetX;
+    pos.y += look.offsetY;
+
+    // Offsets can't push the bubble off screen
+    pos.x = std::clamp(pos.x, size.width / 2, std::max(size.width / 2, winSize.width - size.width / 2));
+    pos.y = std::clamp(pos.y, size.height / 2, std::max(size.height / 2, winSize.height - size.height / 2));
+    this->setPosition(pos);
+}
+
+void SpeechBubble::revealStep(float) {
+    if (m_revealed < m_charCount) {
+        m_bodyLabel->setCharColor(m_revealed, { m_textColor.r, m_textColor.g, m_textColor.b, 255 });
+        if (m_revealed % BLIP_EVERY == 0) {
+            this->playBlip();
+        }
+        m_revealed++;
+        return;
+    }
+    this->unschedule(schedule_selector(SpeechBubble::revealStep));
+    this->startTimer(m_holdTime);
+}
+
+void SpeechBubble::typingStep(float) {
+    m_typingDots = m_typingDots % 3 + 1;
+    m_bodyLabel->setText(std::string(m_typingDots, '.'));
+    m_bodyLabel->setColor(m_textColor);
+}
+
+void SpeechBubble::playBlip() {
+    if (m_soundFile.empty() || m_volume <= 0.f) return;
+    // A little pitch wobble makes the blips sound like a voice instead of a beep
+    std::uniform_real_distribution<float> speed(.94f, 1.08f);
+    FMODAudioEngine::get()->playEffect(m_soundFile, speed(rng()), 0.f, m_volume);
+}
+
+void SpeechBubble::startTimer(float seconds) {
+    this->runAction(CCSequence::create(
+        CCDelayTime::create(seconds),
+        CCCallFunc::create(this, callfunc_selector(SpeechBubble::fadeOut)),
+        nullptr
+    ));
+}
+
 void SpeechBubble::fadeOut() {
-    m_bg->runAction(CCFadeOut::create(FADE_TIME));
-    m_nameLabel->runAction(CCFadeOut::create(FADE_TIME));
-    m_bodyLabel->runAction(CCFadeOut::create(FADE_TIME));
+    this->unscheduleAllSelectors();
+    for (auto node : std::initializer_list<CCNode*> { m_bg, m_nameLabel, m_bodyLabel, m_avatar }) {
+        if (node) node->runAction(CCFadeOut::create(FADE_TIME));
+    }
     this->runAction(CCSequence::create(
         CCDelayTime::create(FADE_TIME),
         CCRemoveSelf::create(),

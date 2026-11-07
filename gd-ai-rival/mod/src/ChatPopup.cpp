@@ -1,14 +1,11 @@
 #include "ChatPopup.hpp"
 #include "AIClient.hpp"
 #include "ConnectionPopup.hpp"
+#include "Profile.hpp"
 
 using namespace geode::prelude;
 
 namespace {
-    constexpr float WIDTH = 380.f;
-    constexpr float HEIGHT = 250.f;
-    constexpr float HISTORY_WIDTH = 340.f;
-    constexpr float HISTORY_HEIGHT = 120.f;
     constexpr float HISTORY_SCALE = .6f;
 
     ChatPopup* s_current = nullptr;
@@ -45,34 +42,50 @@ ChatPopup::~ChatPopup() {
 }
 
 bool ChatPopup::init() {
-    if (!Popup::init(WIDTH, HEIGHT)) return false;
+    auto look = profile::current();
+    m_width = look.chatLarge ? 460.f : 380.f;
+    m_height = look.chatLarge ? 310.f : 250.f;
+    m_historyWidth = m_width - 40.f;
+    m_historyHeight = m_height - 130.f;
+
+    // A custom colour tints a plain panel; GD's brown panel can't be recoloured nicely
+    if (!Popup::init(m_width, m_height, look.chatCustomColor ? "square02b_001.png" : "GJ_square01.png")) return false;
+    if (look.chatCustomColor) {
+        m_bgSprite->setColor(look.chatColor);
+    }
+
+    // AI lines in the history use the name colour, unless it's plain white
+    auto const& name = look.bubble.nameColor;
+    if (name.r != 255 || name.g != 255 || name.b != 255) {
+        m_aiColorTag = fmt::format("<c-{:02x}{:02x}{:02x}>", name.r, name.g, name.b);
+    }
 
     s_current = this;
     auto& client = AIClient::get();
-    this->setTitle(fmt::format("Chat with {}", client.getName()));
+    this->setTitle(fmt::format("Chat with {}", look.name));
 
     auto historyBG = NineSlice::create("square02b_001.png");
     historyBG->setColor({ 0, 0, 0 });
     historyBG->setOpacity(90);
     historyBG->setScale(.4f);
-    historyBG->setContentSize(CCSize(HISTORY_WIDTH + 12.f, HISTORY_HEIGHT + 12.f) / .4f);
+    historyBG->setContentSize(CCSize(m_historyWidth + 12.f, m_historyHeight + 12.f) / .4f);
     m_mainLayer->addChildAtPosition(historyBG, Anchor::Center, ccp(0, 12));
 
     m_history = Label::createRich("", "chatFont.fnt");
     m_history->setAlignment(Label::Alignment::Left);
     m_history->setScale(HISTORY_SCALE);
-    m_history->setMaxWidth(HISTORY_WIDTH / HISTORY_SCALE);
+    m_history->setMaxWidth(m_historyWidth / HISTORY_SCALE);
     m_history->setAnchorPoint({ 0.f, 1.f });
     m_mainLayer->addChildAtPosition(
         m_history, Anchor::Center,
-        ccp(-HISTORY_WIDTH / 2, 12 + HISTORY_HEIGHT / 2)
+        ccp(-m_historyWidth / 2, 12 + m_historyHeight / 2)
     );
 
     m_status = CCLabelBMFont::create("", "chatFont.fnt");
     m_status->setScale(.55f);
     m_mainLayer->addChildAtPosition(m_status, Anchor::Bottom, ccp(0, 62));
 
-    m_input = TextInput::create(260.f, "Say something...", "chatFont.fnt");
+    m_input = TextInput::create(m_width - 120.f, "Say something...", "chatFont.fnt");
     m_input->setCommonFilter(CommonFilter::Any);
     m_input->setMaxCharCount(150);
     m_enterKey.owner = this;
@@ -82,7 +95,7 @@ bool ChatPopup::init() {
     auto sendSpr = ButtonSprite::create("Send", "goldFont.fnt", "GJ_button_01.png", .8f);
     sendSpr->setScale(.8f);
     m_sendBtn = CCMenuItemSpriteExtra::create(sendSpr, this, menu_selector(ChatPopup::onSend));
-    m_buttonMenu->addChildAtPosition(m_sendBtn, Anchor::Bottom, ccp(135, 32));
+    m_buttonMenu->addChildAtPosition(m_sendBtn, Anchor::Bottom, ccp(m_width / 2 - 55.f, 32));
 
     // Gear in the top right opens the AI Connection setup
     auto gearSpr = CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png");
@@ -116,7 +129,7 @@ void ChatPopup::refresh() {
     for (auto const& turn : client.getMemory()) {
         auto text = escapeRich(turn.display);
         if (turn.fromAI) {
-            lines.push_back(fmt::format("<cy>{}</c>", text));
+            lines.push_back(fmt::format("{}{}</c>", m_aiColorTag, text));
         }
         else if (text.starts_with("* ")) {
             lines.push_back(fmt::format("<c-9a9a9a>{}</c>", text));
@@ -150,7 +163,7 @@ void ChatPopup::refresh() {
                 text += lines[i];
             }
             m_history->setRichText(text);
-            if (m_history->getScaledContentHeight() <= HISTORY_HEIGHT || first + 1 >= lines.size()) {
+            if (m_history->getScaledContentHeight() <= m_historyHeight || first + 1 >= lines.size()) {
                 break;
             }
             first++;
@@ -168,7 +181,7 @@ void ChatPopup::refresh() {
     else {
         m_status->setString("");
     }
-    m_status->limitLabelWidth(WIDTH - 30.f, .55f, .3f);
+    m_status->limitLabelWidth(m_width - 30.f, .55f, .3f);
 
     m_sendBtn->setEnabled(!waiting);
     m_sendBtn->setOpacity(waiting ? 120 : 255);

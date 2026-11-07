@@ -1,6 +1,7 @@
 #include "ConnectionPopup.hpp"
 #include "AIClient.hpp"
 #include "ModelListPopup.hpp"
+#include "Profile.hpp"
 #include "Prompt.hpp"
 #include "Text.hpp"
 
@@ -302,9 +303,10 @@ void ConnectionPopup::onTest(CCObject*) {
     }
 
     auto& client = AIClient::get();
+    auto look = profile::current();
     ChatPayload payload;
-    payload.persona = prompt::persona(client.getName());
-    payload.system = prompt::system(payload.persona);
+    payload.persona = look.persona;
+    payload.system = prompt::system(look.persona, look.length);
     payload.message = "[PLAYER] Quick connection test: say hi to me in one short line. (attempt 1, best 0%)";
     payload.playerID = client.getPlayerID();
     if (auto playLayer = PlayLayer::get(); playLayer && playLayer->m_level) {

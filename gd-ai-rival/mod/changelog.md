@@ -6,3 +6,6 @@
 - AI Connection screen: pick a provider, paste your key (hidden on screen), pick a model from the live list, and test it.
 - Personality presets (Rival, Coach, Chill, Sarcastic) or a custom one.
 - Conversation memory per level, daily message limit, and an optional level lock.
+- Fully customizable: bubble colors, font, size and position, cube avatar, letter-by-letter text with talking sounds, chat window theme and size, and per-event reactions with custom directions.
+- Level creators can give their level its own AI with hidden `ai:` text objects.
+- Built for Geometry Dash 2.2091 and Geode v6.

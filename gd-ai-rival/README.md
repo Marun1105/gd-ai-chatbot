@@ -87,34 +87,34 @@ Keys are saved per provider in the mod's save data on the device, shown masked o
 
 ## 4. Settings
 
-| Setting | Default | What it does |
-|---|---|---|
-| AI Connection | - | Opens the connection screen above. |
-| Daily Message Limit | 200 | Most messages sent per day from this device. `0` = no limit. |
-| AI Name | Rival | Name shown on the speech bubble and used in the personality. |
-| Personality | Rival | Rival, Coach, Chill, Sarcastic, or Custom. |
-| Custom Personality | empty | Your own character description when Personality is Custom (max 600 characters). |
-| Memory Size | 10 | Recent messages sent with each request. Resets per level. |
-| Open Chat (PC only) | `T` | Pauses the level and opens the chat. |
-| In-Game Chat Button | on for Android, off for PC | Small chat button next to the pause button. |
-| Auto Reactions | on | AI comments on deaths, new bests and completions. |
-| Greet On Level Start | on | AI says something when you enter a level. |
-| Death Comment Cooldown | 20 s | Minimum gap between comments on ordinary deaths. |
-| Death Comment Chance | 40 % | Chance to comment on an ordinary death once the cooldown is over. |
-| React In Practice Mode | off | Also react in practice mode and from start positions. |
-| Bubble Position / Duration | Top / 4 s | Where the bubble sits and how long it stays. |
-| Only On Specific Levels + Level IDs | off | Level lock. Unpublished editor levels have ID `0`. |
+Everything is in Geode → AI Rival → Settings, grouped into sections:
+
+| Section | What you can change |
+|---|---|
+| Connection | AI Connection screen, Daily Message Limit (default 200, `0` = none) |
+| Character | Name, Personality (Rival, Coach, Chill, Sarcastic, Custom), custom personality text, Reply Length (Very Short / Short / Medium), Memory Size |
+| Controls | Open Chat keybind (PC, default `T`), In-Game Chat Button (on for phones) |
+| Game Reactions | Master switch, each reaction on or off (start, deaths, close calls, new bests, completion), close call range, death cooldown and chance, practice mode, and a custom direction for each moment ("give me a tip instead of roasting me") |
+| Speech Bubble | Position (6 spots) and nudge, width, font (Chat / Big / Gold), text size, background color + transparency, text and name colors, how long it stays, letter-by-letter text |
+| Avatar | GD cube in the bubble: any icon number and two palette colors, your own icon, or none |
+| Chat Window | Classic GD theme or a custom color, Normal or Large size |
+| Sound | Talking blips while text appears (Blip / Chirp / Soft / Off) and their volume |
+| Levels | Let levels customize the AI, and the optional level lock |
+
+### For level creators
+
+A level can give the AI its own name, personality, look, sound and reactions with hidden **text objects** whose text starts with `ai:`, for example `ai: name = Rocky | avatar = 35 | sound = chirp` or `ai: on-death = mock the ship part`. The full list of keys is in [`mod/about.md`](mod/about.md#for-level-creators-give-your-level-its-own-ai) (also shown on the mod's page in-game). A level can't change a player's AI connection, key, daily limit or cooldowns, and players can turn level customization off.
 
 ### How reactions are rate-limited
 
 - At most one request is in flight at a time. A death comment never interrupts a chat reply.
 - **Ordinary deaths:** only after the cooldown, and then only with the configured chance. Skipped deaths are summarized in the next comment ("other deaths since your last comment: 12%, 34%...").
 - **Close calls** (within 3% of your best, once your best is at least 30%): half the cooldown, no dice roll.
-- **New bests:** always commented on, at most one every 8 seconds.
+- **New bests:** always commented on (if on), at most one every 8 seconds.
 - **Level start and completion:** always.
 - The **Daily Message Limit** caps everything, chat included.
 
-Every reply follows fixed rules whichever AI is used: 1-2 short sentences, plain ASCII (GD's fonts can't draw anything else), playful rather than hateful. Replies are cleaned up and trimmed to 220 characters before they're shown.
+Every reply follows fixed rules whichever AI is used: the chosen reply length, plain ASCII (GD's fonts can't draw anything else), playful rather than hateful. Replies are cleaned up and trimmed (120 / 220 / 320 characters for Very Short / Short / Medium) before they're shown.
 
 ---
 

@@ -6,6 +6,8 @@ Talk to an AI while you play. It watches your run and reacts to what happens:
 - **Reactions**: it comments on deaths, new bests and completions, without spamming every attempt.
 - **Memory**: it remembers the recent conversation for the current level.
 - **Personalities**: Rival, Coach, Chill, Sarcastic, or write your own.
+- **Your style**: bubble colors, font, size and position, a cube avatar (any icon, or your own), letter-by-letter text with talking sounds, chat window theme.
+- **Level creators** can give their level its own AI character (see below).
 - **Any AI**: Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, or any OpenAI-compatible API.
 
 ## Setup (about 2 minutes)
@@ -64,6 +66,40 @@ A ChatGPT Plus subscription does not include API credit; the API is billed separ
 
 ### Creator proxy
 Some level creators run their own server so players don't need a key at all. Pick **Creator proxy** and paste the URL the creator shared (it ends in `/chat`).
+
+## For level creators: give your level its own AI
+
+Put **text objects** in your level whose text starts with `ai:`. Hide them anywhere (behind a block, off screen, or invisible); the mod reads them when the level loads. Each text object can hold one setting, or several separated by `|`.
+
+Example:
+
+- `ai: name = Rocky | avatar = 35 | avatar-colors = 9, 12`
+- `ai: persona = You are Rocky, a grumpy wizard who guards this tower. You hate the ship part.`
+- `ai: on-death = If they die between 50 and 70 percent, mock the ship part.`
+- `ai: on-complete = Congratulate them and tell them the secret password is TOWER.`
+- `ai: bubble-color = 40, 0, 60, 200 | text-color = 255, 230, 255 | sound = chirp`
+
+**Character**
+- `name`: the AI's name
+- `persona`: who it is and how it talks (up to 600 characters)
+- `preset`: `rival`, `coach`, `chill` or `sarcastic`
+- `length`: `very short`, `short` or `medium`
+
+**Reactions**
+- `start`, `death`, `close-call`, `new-best`, `complete`: `off` to turn that reaction off
+- `on-start`, `on-death`, `on-new-best`, `on-complete`: a direction for that moment (up to 200 characters)
+- `close-call-range`: how many percent from the best counts as a close call
+
+**Look**
+- `bubble-position`: `top`, `bottom`, `top left`, `top right`, `bottom left`, `bottom right`
+- `bubble-x`, `bubble-y`: nudge the bubble
+- `bubble-color` (`r, g, b, alpha`), `text-color`, `name-color` (`r, g, b`, or `#rrggbb`)
+- `font`: `chat`, `big` or `gold`; `text-size`; `width`; `duration` (seconds); `typewriter`: `on` or `off`
+- `avatar`: a cube icon number, `player` (the player's own cube) or `off`; `avatar-colors`: two GD color numbers
+- `sound`: `blip`, `chirp`, `soft` or `off`
+- `chat-color`: color of the chat window
+
+Players can turn level customization off in the settings. A level can never change a player's AI connection, key, daily limit or comment cooldown.
 
 ## Your key and your costs
 

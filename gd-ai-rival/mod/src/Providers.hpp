@@ -75,7 +75,7 @@ namespace providers {
     geode::utils::web::WebFuture sendChat(Connection const& connection, ChatPayload const& payload);
     // The cleaned reply, or a short message explaining what went wrong
     geode::Result<std::string, std::string> parseChat(
-        Connection const& connection, geode::utils::web::WebResponse const& response
+        Connection const& connection, geode::utils::web::WebResponse const& response, size_t maxChars = 220
     );
 
     bool canListModels(Connection const& connection);

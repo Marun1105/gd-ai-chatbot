@@ -4,6 +4,7 @@
 #include <Geode/utils/async.hpp>
 #include <Geode/utils/web.hpp>
 
+#include "Profile.hpp"
 #include "Providers.hpp"
 
 #include <chrono>
@@ -79,7 +80,10 @@ private:
     bool canSendEvent(Priority priority);
     void sendEvent(std::string text, std::string display);
     void send(std::string text, std::string display, bool isChat);
-    void onResponse(Connection const& connection, geode::utils::web::WebResponse const& response, Turn userTurn, bool isChat);
+    void onResponse(
+        Connection const& connection, geode::utils::web::WebResponse const& response,
+        size_t maxChars, Turn userTurn, bool isChat
+    );
     // Counts one message against the daily limit; false when the limit is used up
     bool takeDailyMessage();
     void remember(Turn userTurn, std::string reply);

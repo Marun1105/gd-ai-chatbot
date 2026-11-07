@@ -28,6 +28,12 @@ protected:
     };
 
     EnterKeyDelegate m_enterKey;
+    // Sizes depend on the Chat Size setting
+    float m_width = 380.f;
+    float m_height = 250.f;
+    float m_historyWidth = 340.f;
+    float m_historyHeight = 120.f;
+    std::string m_aiColorTag = "<cy>";
     geode::TextInput* m_input = nullptr;
     geode::Label* m_history = nullptr;
     cocos2d::CCLabelBMFont* m_status = nullptr;
