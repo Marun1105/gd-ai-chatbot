@@ -33,6 +33,7 @@ const MAX_HISTORY = 20;
 const MAX_TURN_CHARS = 500;
 const MAX_MESSAGE_CHARS = 400;
 const MAX_PERSONA_CHARS = 600;
+const MAX_LEVEL_CHARS = 1200;
 // Thinking can't be turned off and counts toward max_tokens, so leave room
 // for it on top of the one or two sentences we actually want
 const MAX_TOKENS = 1024;
@@ -48,6 +49,8 @@ interface ChatRequest {
   playerId: string;
   levelId: number;
   persona: string;
+  // Facts about the level from the game (difficulty, creator, song...)
+  level: string;
   messages: BetaMessageParam[];
 }
 
@@ -183,7 +186,11 @@ async function parseRequest(request: Request, env: Env): Promise<ChatRequest> {
     persona = body.persona.trim();
   }
 
-  return { playerId, levelId, persona, messages };
+  // Optional; older mod versions don't send it. Clipped rather than rejected,
+  // since it's game data, not something the player typed.
+  const level = typeof body.level === "string" ? body.level.trim().slice(0, MAX_LEVEL_CHARS) : "";
+
+  return { playerId, levelId, persona, level, messages };
 }
 
 async function askClaude(env: Env, apiKey: string, chat: ChatRequest): Promise<string> {
@@ -198,7 +205,7 @@ async function askClaude(env: Env, apiKey: string, chat: ChatRequest): Promise<s
   const response = await client.beta.messages.create({
     model: env.MODEL || DEFAULT_MODEL,
     max_tokens: MAX_TOKENS,
-    system: buildSystemPrompt(chat.persona),
+    system: buildSystemPrompt(chat.persona, chat.level),
     messages: chat.messages,
     // Short banter: keep thinking brief so replies arrive while the moment lasts
     output_config: { effort: "low" },

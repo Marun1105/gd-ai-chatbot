@@ -306,7 +306,7 @@ void ConnectionPopup::onTest(CCObject*) {
     auto look = profile::current();
     ChatPayload payload;
     payload.persona = look.persona;
-    payload.system = prompt::system(look.persona, look.length);
+    payload.system = prompt::system(look.persona, look.length, "");
     payload.message = "[PLAYER] Quick connection test: say hi to me in one short line. (attempt 1, best 0%)";
     payload.playerID = client.getPlayerID();
     if (auto playLayer = PlayLayer::get(); playLayer && playLayer->m_level) {

@@ -1,4 +1,5 @@
 #include "AIClient.hpp"
+#include "GameInfo.hpp"
 #include "Prompt.hpp"
 #include "SpeechBubble.hpp"
 #include "Text.hpp"
@@ -44,6 +45,9 @@ void AIClient::startLevel(LevelInfo info) {
     m_attempt = 1;
     m_memory.clear();
     m_unreportedDeaths.clear();
+    m_deathsAt.clear();
+    m_sessionDeaths = 0;
+    m_sessionStart = std::chrono::steady_clock::now();
     m_lastSent = {};
     profile::resetLevel();
     this->notifyUpdate();
@@ -89,10 +93,21 @@ void AIClient::notifyUpdate() {
 }
 
 std::string AIClient::statusLine() const {
-    if (m_level.platformer) {
-        return fmt::format("attempt {}", m_attempt);
+    auto status = m_level.platformer
+        ? fmt::format("attempt {}", m_attempt)
+        : fmt::format("attempt {}, best {}%", m_attempt, m_level.bestPercent);
+
+    // Where they paused to chat, so "how do I do this part?" makes sense
+    if (auto playLayer = PlayLayer::get()) {
+        auto where = gameinfo::situation(playLayer->m_player1, playLayer->m_gameState.m_isDualMode);
+        if (m_level.platformer) {
+            status += fmt::format(", currently {}", where);
+        }
+        else {
+            status += fmt::format(", paused at {}% {}", playLayer->getCurrentPercentInt(), where);
+        }
     }
-    return fmt::format("attempt {}, best {}%", m_attempt, m_level.bestPercent);
+    return status;
 }
 
 void AIClient::sendChat(std::string const& message) {
@@ -128,31 +143,28 @@ void AIClient::onLevelStart() {
     if (!setting("auto-reactions") || !rules.start) return;
     if (!this->canSendEvent(Priority::Always)) return;
 
-    std::string text;
+    std::string progress;
     if (m_level.platformer) {
-        text = fmt::format(
-            "[GAME EVENT] The player just opened the platformer level \"{}\" ({} attempts so far).",
-            m_level.name, m_level.totalAttempts
-        );
+        progress = fmt::format("{} attempts so far", m_level.totalAttempts);
     }
     else if (m_level.bestPercent >= 100) {
-        text = fmt::format(
-            "[GAME EVENT] The player just opened the level \"{}\", which they have already beaten ({} attempts so far).",
-            m_level.name, m_level.totalAttempts
-        );
+        progress = fmt::format("they have already beaten it, {} attempts so far", m_level.totalAttempts);
+    }
+    else if (m_level.totalAttempts == 0) {
+        progress = "their first time playing it";
     }
     else {
-        text = fmt::format(
-            "[GAME EVENT] The player just opened the level \"{}\" (best {}%, {} attempts so far).",
-            m_level.name, m_level.bestPercent, m_level.totalAttempts
-        );
+        progress = fmt::format("best {}%, {} attempts so far", m_level.bestPercent, m_level.totalAttempts);
     }
+    auto text = fmt::format("[GAME EVENT] The player just opened a level: {}. ({}.)", m_level.facts, progress);
     this->sendEvent(withNote(std::move(text), rules.onStart), "* Entered the level");
 }
 
-void AIClient::onDeath(int percent, int attempt, bool practice) {
+void AIClient::onDeath(int percent, int attempt, bool practice, std::string const& situation) {
     if (!m_active) return;
     m_attempt = attempt;
+    m_sessionDeaths++;
+    int deathsHere = m_level.platformer ? 0 : ++m_deathsAt[percent];
 
     bool newBest = !practice && !m_level.platformer && percent > m_level.bestPercent;
     int oldBest = m_level.bestPercent;
@@ -160,6 +172,7 @@ void AIClient::onDeath(int percent, int attempt, bool practice) {
 
     if (!setting("auto-reactions") || (practice && !setting("react-in-practice"))) return;
     auto rules = profile::current().events;
+    auto doing = situation.empty() ? std::string() : fmt::format(" ({})", situation);
 
     // With new-best comments off, a new best is just another (close) death
     if (newBest && rules.newBest) {
@@ -168,8 +181,8 @@ void AIClient::onDeath(int percent, int attempt, bool practice) {
             return;
         }
         auto text = oldBest == 0
-            ? fmt::format("[GAME EVENT] NEW BEST: the player died at {}% on attempt {}, their first progress on this level.", percent, attempt)
-            : fmt::format("[GAME EVENT] NEW BEST: the player died at {}% on attempt {}, beating their old best of {}%.", percent, attempt, oldBest);
+            ? fmt::format("[GAME EVENT] NEW BEST: the player died at {}%{} on attempt {}, their first progress on this level.", percent, doing, attempt)
+            : fmt::format("[GAME EVENT] NEW BEST: the player died at {}%{} on attempt {}, beating their old best of {}%.", percent, doing, attempt, oldBest);
         this->sendEvent(withNote(std::move(text), rules.onNewBest), fmt::format("* New best: {}%", percent));
         return;
     }
@@ -188,14 +201,21 @@ void AIClient::onDeath(int percent, int attempt, bool practice) {
 
     auto where = m_level.platformer ? std::string() : fmt::format(" at {}%", percent);
     auto text = fmt::format(
-        "[GAME EVENT] The player died{} on attempt {}{}.",
-        where, attempt, practice ? " (practice mode)" : ""
+        "[GAME EVENT] The player died{}{} on attempt {}{}.",
+        where, doing, attempt, practice ? " (practice mode)" : ""
     );
     if (!practice && !m_level.platformer) {
         text += fmt::format(" Their best is {}%.", m_level.bestPercent);
     }
     if (closeCall) {
         text += " That was really close to their best.";
+    }
+    if (deathsHere >= 2) {
+        text += fmt::format(" That's death number {} at {}% this session.", deathsHere, percent);
+    }
+    text += fmt::format(" {} deaths this session so far.", m_sessionDeaths);
+    if (auto hotspots = this->deathHotspots(); !hotspots.empty()) {
+        text += fmt::format(" Most common death spots this session: {}.", hotspots);
     }
     if (!m_unreportedDeaths.empty()) {
         if (m_level.platformer) {
@@ -219,17 +239,38 @@ void AIClient::onComplete(int attempt, bool practice) {
     if (!setting("auto-reactions") || !rules.complete || (practice && !setting("react-in-practice"))) return;
     if (!this->canSendEvent(Priority::Always)) return;
 
+    auto minutes = std::chrono::duration_cast<std::chrono::minutes>(
+        std::chrono::steady_clock::now() - m_sessionStart
+    ).count();
+    auto effort = fmt::format(" This session took {} deaths and {} minute{}.", m_sessionDeaths, minutes, minutes == 1 ? "" : "s");
+
     std::string text;
     if (practice) {
-        text = fmt::format("[GAME EVENT] The player finished a practice run of the level (attempt {}).", attempt);
+        text = fmt::format("[GAME EVENT] The player finished a practice run of the level (attempt {}).{}", attempt, effort);
     }
     else {
         text = fmt::format(
-            "[GAME EVENT] The player BEAT THE LEVEL on attempt {}! {}",
-            attempt, firstWin ? "This is their first completion." : "They had already beaten it before."
+            "[GAME EVENT] The player BEAT THE LEVEL on attempt {}! {}{}",
+            attempt, firstWin ? "This is their first completion." : "They had already beaten it before.", effort
         );
     }
     this->sendEvent(withNote(std::move(text), rules.onComplete), practice ? "* Finished practice run" : "* Beat the level!");
+}
+
+std::string AIClient::deathHotspots() const {
+    // Spots with at least two deaths, worst first, at most three
+    std::vector<std::pair<int, int>> spots;
+    for (auto const& [percent, count] : m_deathsAt) {
+        if (count >= 2) spots.emplace_back(count, percent);
+    }
+    std::sort(spots.begin(), spots.end(), std::greater<>());
+    if (spots.size() > 3) spots.resize(3);
+
+    std::vector<std::string> parts;
+    for (auto const& [count, percent] : spots) {
+        parts.push_back(fmt::format("{}% ({}x)", percent, count));
+    }
+    return fmt::format("{}", fmt::join(parts, ", "));
 }
 
 bool AIClient::canSendEvent(Priority priority) {
@@ -289,11 +330,12 @@ void AIClient::send(std::string text, std::string display, bool isChat) {
 
     ChatPayload payload;
     payload.persona = look.persona;
-    payload.system = prompt::system(look.persona, look.length);
+    payload.system = prompt::system(look.persona, look.length, m_level.about);
     for (auto const& turn : m_memory) {
         payload.history.emplace_back(turn.fromAI, turn.text);
     }
     payload.message = text;
+    payload.levelAbout = m_level.about;
     payload.playerID = this->getPlayerID();
     payload.levelID = m_level.id;
 
