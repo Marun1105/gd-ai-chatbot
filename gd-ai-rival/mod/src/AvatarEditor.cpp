@@ -28,7 +28,8 @@ namespace {
     // Tag for the "no glow" cell in the glow grid
     constexpr int NO_GLOW = -1;
 
-    constexpr float CANVAS_CELL = 10.f;
+    // The canvas stays this big; more squares just makes each one smaller
+    constexpr float CANVAS_EXTENT = 160.f;
     const CCPoint CANVAS_CENTER { -62.f, 4.f };
     constexpr int PALETTE_COLUMNS = 3;
     constexpr float PALETTE_SPACING = 19.f;
@@ -108,9 +109,9 @@ namespace {
 
 // ---- PixelCanvas ----
 
-PixelCanvas* PixelCanvas::create(float cellSize, std::string const& pixels) {
+PixelCanvas* PixelCanvas::create(float extent, std::string const& pixels) {
     auto ret = new PixelCanvas();
-    if (ret->init(cellSize, pixels)) {
+    if (ret->init(extent, pixels)) {
         ret->autorelease();
         return ret;
     }
@@ -118,35 +119,41 @@ PixelCanvas* PixelCanvas::create(float cellSize, std::string const& pixels) {
     return nullptr;
 }
 
-bool PixelCanvas::init(float cellSize, std::string const& pixels) {
+bool PixelCanvas::init(float extent, std::string const& pixels) {
     if (!CCLayer::init()) return false;
 
-    m_cell = cellSize;
+    m_extent = extent;
     m_pixels = avatar::normalizePixels(pixels);
-    float size = cellSize * avatar::GRID;
-    this->setContentSize({ size, size });
+    this->setContentSize({ extent, extent });
     this->ignoreAnchorPointForPosition(false);
     this->setAnchorPoint({ .5f, .5f });
 
-    // Checkerboard shows which pixels are see-through
-    auto checker = CCDrawNode::create();
-    float check = cellSize * 2;
-    for (int y = 0; y < avatar::GRID / 2; y++) {
-        for (int x = 0; x < avatar::GRID / 2; x++) {
-            auto c = (x + y) % 2 == 0 ? ccc4f(.24f, .24f, .28f, 1.f) : ccc4f(.17f, .17f, .2f, 1.f);
-            CCPoint from { x * check, y * check };
-            checker->drawRect(from, from + CCPoint(check, check), c, 0.f, c);
-        }
-    }
-    this->addChild(checker, 0);
-
+    m_checker = CCDrawNode::create();
+    this->addChild(m_checker, 0);
     m_guides = CCDrawNode::create();
     this->addChild(m_guides, 2);
 
-    this->redraw();
-    this->drawGuides();
+    this->applySize();
     this->setTouchEnabled(true);
     return true;
+}
+
+void PixelCanvas::applySize() {
+    m_size = avatar::gridOf(m_pixels);
+    m_cell = m_extent / m_size;
+
+    // Checkerboard (two squares per check) shows which pixels are see-through
+    m_checker->clear();
+    float check = m_cell * 2;
+    for (int y = 0; y < m_size / 2; y++) {
+        for (int x = 0; x < m_size / 2; x++) {
+            auto c = (x + y) % 2 == 0 ? ccc4f(.24f, .24f, .28f, 1.f) : ccc4f(.17f, .17f, .2f, 1.f);
+            CCPoint from { x * check, y * check };
+            m_checker->drawRect(from, from + CCPoint(check, check), c, 0.f, c);
+        }
+    }
+    this->redraw();
+    this->drawGuides();
 }
 
 void PixelCanvas::registerWithTouchDispatcher() {
@@ -156,19 +163,19 @@ void PixelCanvas::registerWithTouchDispatcher() {
 
 void PixelCanvas::redraw() {
     if (m_sprite) m_sprite->removeFromParent();
-    float size = m_cell * avatar::GRID;
-    m_sprite = avatar::createDrawing(m_pixels, size);
+    m_sprite = avatar::createDrawing(m_pixels, m_extent);
     if (m_sprite) {
-        m_sprite->setPosition({ size / 2, size / 2 });
+        m_sprite->setPosition({ m_extent / 2, m_extent / 2 });
         this->addChild(m_sprite, 1);
     }
 }
 
 void PixelCanvas::drawGuides() {
     m_guides->clear();
-    float size = m_cell * avatar::GRID;
-    auto line = ccc4f(1.f, 1.f, 1.f, .10f);
-    for (int i = 1; i < avatar::GRID; i++) {
+    float size = m_extent;
+    // Fainter lines when the squares are small, so the drawing stays readable
+    auto line = ccc4f(1.f, 1.f, 1.f, m_size > 16 ? .06f : .10f);
+    for (int i = 1; i < m_size; i++) {
         float p = i * m_cell;
         m_guides->drawSegment({ p, 0.f }, { p, size }, .25f, line);
         m_guides->drawSegment({ 0.f, p }, { size, p }, .25f, line);
@@ -197,8 +204,7 @@ void PixelCanvas::setPixels(std::string const& pixels, bool remember) {
         if (m_history.size() > 40) m_history.erase(m_history.begin());
     }
     m_pixels = normalized;
-    this->redraw();
-    this->drawGuides();
+    this->applySize();
     if (m_onChange) m_onChange(m_pixels);
 }
 
@@ -206,49 +212,49 @@ void PixelCanvas::undo() {
     if (m_history.empty()) return;
     m_pixels = m_history.back();
     m_history.pop_back();
-    this->redraw();
+    // An undo can also go back to a different number of squares
+    this->applySize();
     if (m_onChange) m_onChange(m_pixels);
 }
 
 bool PixelCanvas::setPixel(int row, int col, char value) {
     bool changed = false;
     auto put = [&](int c) {
-        auto& pixel = m_pixels[row * avatar::GRID + c];
+        auto& pixel = m_pixels[row * m_size + c];
         if (pixel != value) {
             pixel = value;
             changed = true;
         }
     };
     put(col);
-    if (m_mirror) put(avatar::GRID - 1 - col);
+    if (m_mirror) put(m_size - 1 - col);
     return changed;
 }
 
 bool PixelCanvas::fill(int row, int col, char value) {
-    char target = m_pixels[row * avatar::GRID + col];
+    char target = m_pixels[row * m_size + col];
     if (target == value) return false;
-    std::vector<int> stack { row * avatar::GRID + col };
+    std::vector<int> stack { row * m_size + col };
     while (!stack.empty()) {
         int index = stack.back();
         stack.pop_back();
         if (m_pixels[index] != target) continue;
         m_pixels[index] = value;
-        int r = index / avatar::GRID;
-        int c = index % avatar::GRID;
-        if (r > 0) stack.push_back(index - avatar::GRID);
-        if (r < avatar::GRID - 1) stack.push_back(index + avatar::GRID);
+        int r = index / m_size;
+        int c = index % m_size;
+        if (r > 0) stack.push_back(index - m_size);
+        if (r < m_size - 1) stack.push_back(index + m_size);
         if (c > 0) stack.push_back(index - 1);
-        if (c < avatar::GRID - 1) stack.push_back(index + 1);
+        if (c < m_size - 1) stack.push_back(index + 1);
     }
     return true;
 }
 
 bool PixelCanvas::paintAt(CCPoint local) {
-    float size = m_cell * avatar::GRID;
-    if (local.x < 0.f || local.y < 0.f || local.x >= size || local.y >= size) return false;
-    int col = static_cast<int>(local.x / m_cell);
+    if (local.x < 0.f || local.y < 0.f || local.x >= m_extent || local.y >= m_extent) return false;
+    int col = std::clamp(static_cast<int>(local.x / m_cell), 0, m_size - 1);
     // Row 0 is the top
-    int row = avatar::GRID - 1 - static_cast<int>(local.y / m_cell);
+    int row = std::clamp(m_size - 1 - static_cast<int>(local.y / m_cell), 0, m_size - 1);
     char value = avatar::slotChar(m_slot);
 
     bool changed = m_tool == Tool::Fill ? fill(row, col, value) : setPixel(row, col, value);
@@ -261,7 +267,7 @@ bool PixelCanvas::paintAt(CCPoint local) {
 
 bool PixelCanvas::ccTouchBegan(CCTouch* touch, CCEvent*) {
     auto local = this->convertTouchToNodeSpace(touch);
-    float size = m_cell * avatar::GRID;
+    float size = m_extent;
     if (!this->isVisible() || local.x < 0.f || local.y < 0.f || local.x >= size || local.y >= size) return false;
     m_strokeStart = m_pixels;
     this->paintAt(local);
@@ -564,12 +570,25 @@ void AvatarEditor::moveColorHighlight() {
 // ---- Drawing ----
 
 void AvatarEditor::buildDrawing() {
-    auto title = CCLabelBMFont::create("Tap or drag to draw", "chatFont.fnt");
-    title->setScale(.5f);
-    title->setColor(GRAY);
-    m_right->addChildAtPosition(title, Anchor::Center, CANVAS_CENTER + CCPoint(0, 94));
+    // Detail: how many squares the drawing has per side
+    auto detail = plainMenu({ 200.f, 20.f });
+    m_right->addChildAtPosition(detail, Anchor::Center, CANVAS_CENTER + CCPoint(0, 94));
+    auto detailLabel = CCLabelBMFont::create("Detail", "goldFont.fnt");
+    detailLabel->setScale(.34f);
+    detailLabel->setAnchorPoint({ 0.f, .5f });
+    detail->addChildAtPosition(detailLabel, Anchor::Center, ccp(64, 0));
+    int current = avatar::gridOf(avatar::normalizePixels(m_look.pixels));
+    m_sizeSprites.clear();
+    for (size_t i = 0; i < avatar::GRID_SIZES.size(); i++) {
+        int size = avatar::GRID_SIZES[i];
+        auto sprite = fixedSprite(std::to_string(size).c_str(), 52, size == current, .4f);
+        auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(AvatarEditor::onGridSize));
+        button->setTag(size);
+        detail->addChildAtPosition(button, Anchor::Center, ccp(-50.f + i * 25.f, 0));
+        m_sizeSprites.push_back({ size, sprite });
+    }
 
-    m_canvas = PixelCanvas::create(CANVAS_CELL, m_look.pixels);
+    m_canvas = PixelCanvas::create(CANVAS_EXTENT, m_look.pixels);
     m_canvas->m_onChange = [this](std::string const& pixels) {
         m_look.pixels = pixels;
         this->refreshPreview();
@@ -647,6 +666,9 @@ void AvatarEditor::refreshToolButtons() {
     if (m_penSprite) m_penSprite->updateBGImage(m_canvas->m_tool == PixelCanvas::Tool::Pen ? ON_BG : OFF_BG);
     if (m_fillSprite) m_fillSprite->updateBGImage(m_canvas->m_tool == PixelCanvas::Tool::Fill ? ON_BG : OFF_BG);
     if (m_mirrorSprite) m_mirrorSprite->updateBGImage(m_canvas->m_mirror ? ON_BG : OFF_BG);
+    for (auto const& [size, sprite] : m_sizeSprites) {
+        sprite->updateBGImage(size == m_canvas->gridSize() ? ON_BG : OFF_BG);
+    }
 
     if (m_slotHighlight && m_paletteMenu) {
         for (auto child : CCArrayExt<CCNode*>(m_paletteMenu->getChildren())) {
@@ -791,16 +813,27 @@ void AvatarEditor::onMirror(CCObject*) {
     this->refreshToolButtons();
 }
 
+void AvatarEditor::onGridSize(CCObject* sender) {
+    if (!m_canvas) return;
+    int size = static_cast<CCNode*>(sender)->getTag();
+    if (size == m_canvas->gridSize()) return;
+    // Rescale what's there instead of starting over; Undo brings it back
+    m_canvas->setPixels(avatar::resizeDrawing(m_canvas->getPixels(), size), true);
+    this->refreshToolButtons();
+}
+
 void AvatarEditor::onUndo(CCObject*) {
-    if (m_canvas) m_canvas->undo();
+    if (!m_canvas) return;
+    m_canvas->undo();
+    this->refreshToolButtons();
 }
 
 void AvatarEditor::onClearCanvas(CCObject*) {
-    if (m_canvas) m_canvas->setPixels(std::string(avatar::PIXEL_COUNT, avatar::EMPTY), true);
+    if (m_canvas) m_canvas->setPixels(avatar::emptyDrawing(m_canvas->gridSize()), true);
 }
 
 void AvatarEditor::onStarter(CCObject*) {
-    if (m_canvas) m_canvas->setPixels(avatar::starterDrawing(), true);
+    if (m_canvas) m_canvas->setPixels(avatar::starterDrawing(m_canvas->gridSize()), true);
 }
 
 void AvatarEditor::onCopyCode(CCObject*) {
@@ -811,15 +844,13 @@ void AvatarEditor::onCopyCode(CCObject*) {
 
 void AvatarEditor::onPasteCode(CCObject*) {
     if (!m_canvas) return;
-    std::string code;
-    for (char c : utils::clipboard::read()) {
-        if (c == avatar::EMPTY || avatar::slotIndex(c) >= 0) code += c;
-    }
-    if (code.size() != static_cast<size_t>(avatar::PIXEL_COUNT)) {
+    auto code = avatar::parseDrawingCode(utils::clipboard::read());
+    if (!code) {
         Notification::create("The clipboard doesn't hold a drawing code", NotificationIcon::Error)->show();
         return;
     }
-    m_canvas->setPixels(code, true);
+    m_canvas->setPixels(*code, true);
+    this->refreshToolButtons();
 }
 
 void AvatarEditor::onCopyMine(CCObject*) {

@@ -324,7 +324,7 @@
 		"avatar": {
 			"type": "custom:avatar",
 			"name": "Icon",
-			"description": "The icon next to the AI's name. Tap <cy>Edit</c> to pick a cube and colors from the icon kit, draw your own 16x16 icon, copy your own icon, or turn it off.",
+			"description": "The icon next to the AI's name. Tap <cy>Edit</c> to pick a cube and colors from the icon kit, draw your own pixel icon (8 to 32 squares per side), copy your own icon, or turn it off.",
 			"default": {
 				"mode": "icon",
 				"icon": 1,

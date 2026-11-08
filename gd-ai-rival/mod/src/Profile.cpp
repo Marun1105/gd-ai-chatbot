@@ -238,13 +238,9 @@ namespace {
             }
             else if (key == "avatar-drawing") {
                 // The code from the avatar editor's Copy button
-                std::string code;
-                for (char c : value) {
-                    if (c == avatar::EMPTY || avatar::slotIndex(c) >= 0) code += c;
-                }
-                if (code.size() == static_cast<size_t>(avatar::PIXEL_COUNT)) {
+                if (auto code = avatar::parseDrawingCode(value)) {
                     bubble.avatar.mode = AvatarMode::Drawn;
-                    bubble.avatar.pixels = code;
+                    bubble.avatar.pixels = *code;
                 }
             }
             else if (key == "sound") p.soundFile = soundFile(value);

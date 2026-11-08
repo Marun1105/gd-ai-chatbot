@@ -6,7 +6,7 @@
 - Works with Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, any OpenAI-compatible API, or a creator's proxy.
 - AI Connection screen: pick a provider, paste your key (hidden on screen), pick a model from the live list, and test it.
 - Personality presets (Rival, Coach, Chill, Sarcastic) or your own, written in a big text editor (up to 1000 characters, paste and examples).
-- Avatar editor with a live bubble preview: pick a cube, colors and glow from the icon kit, or draw your own 16x16 icon.
+- Avatar editor with a live bubble preview: pick a cube, colors and glow from the icon kit, or draw your own pixel icon with as many or as few squares as you like (8 to 32 per side).
 - Conversation memory per level, daily message limit, and an optional level lock.
 - Bubble Designer with a live preview: drag the bubble on a mini game screen, color themes, fonts, sizes and talking sounds, with a close-up that replays the reply. The chat window gets a live preview too.
 - Per-event reactions with custom directions.

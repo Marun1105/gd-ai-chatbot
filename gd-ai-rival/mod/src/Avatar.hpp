@@ -2,6 +2,8 @@
 
 #include <Geode/Geode.hpp>
 
+#include <array>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -21,16 +23,18 @@ struct AvatarLook {
     int color2 = 3;
     bool glow = false;
     int glowColor = 3;
-    // GRID x GRID pixels, row by row from the top; each character is a slot
-    // in drawPalette(), '.' is see-through
+    // size x size pixels (size from avatar::GRID_SIZES), row by row from the
+    // top; each character is a slot in drawPalette(), '.' is see-through
     std::string pixels;
 
     bool operator==(AvatarLook const&) const = default;
 };
 
 namespace avatar {
-    constexpr int GRID = 16;
-    constexpr int PIXEL_COUNT = GRID * GRID;
+    // Squares per side the drawing editor offers: fewer for chunky icons,
+    // more for detailed ones
+    constexpr std::array<int, 5> GRID_SIZES { 8, 12, 16, 24, 32 };
+    constexpr int DEFAULT_GRID = 16;
     constexpr char EMPTY = '.';
     // GD 2.2 has 107 player colors
     constexpr int COLOR_COUNT = 107;
@@ -42,10 +46,20 @@ namespace avatar {
     // -1 for see-through or unknown characters
     int slotIndex(char c);
 
+    bool isGridSize(int size);
+    // Squares per side of a drawing (16 for anything that isn't a valid size)
+    int gridOf(std::string_view pixels);
+
     // A simple cube face, so the drawing canvas never starts out blank
-    std::string starterDrawing();
-    // Any string -> exactly PIXEL_COUNT valid characters
+    std::string starterDrawing(int size = DEFAULT_GRID);
+    std::string emptyDrawing(int size);
+    // Any string -> a valid drawing. Keeps its size when the length matches
+    // one of GRID_SIZES; anything else becomes 16x16, as older versions saved.
     std::string normalizePixels(std::string_view pixels);
+    // The same picture with more or fewer squares (nearest neighbour)
+    std::string resizeDrawing(std::string_view pixels, int size);
+    // A drawing code from the clipboard or a level, or nothing if it isn't one
+    std::optional<std::string> parseDrawingCode(std::string_view text);
 
     int iconCount();
     // GD's colors sorted by hue, then grays, the way a color picker should look
