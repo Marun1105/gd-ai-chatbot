@@ -1,4 +1,5 @@
 #include "Profile.hpp"
+#include "CustomSettings.hpp"
 #include "Text.hpp"
 
 #include <algorithm>
@@ -9,7 +10,7 @@
 using namespace geode::prelude;
 
 namespace {
-    constexpr size_t MAX_PERSONA_CHARS = 600;
+    constexpr size_t MAX_PERSONA_CHARS = 1000;
     constexpr size_t MAX_NOTE_CHARS = 200;
     constexpr size_t MAX_NAME_CHARS = 24;
     constexpr int TEXT_OBJECT_ID = 914;
@@ -115,28 +116,15 @@ namespace {
     }
 
     BubbleAnchor parseAnchor(std::string_view text) {
-        auto value = normalizeKey(text);
-        if (value == "bottom") return BubbleAnchor::Bottom;
-        if (value == "top-left" || value == "topleft") return BubbleAnchor::TopLeft;
-        if (value == "top-right" || value == "topright") return BubbleAnchor::TopRight;
-        if (value == "bottom-left" || value == "bottomleft") return BubbleAnchor::BottomLeft;
-        if (value == "bottom-right" || value == "bottomright") return BubbleAnchor::BottomRight;
-        return BubbleAnchor::Top;
+        return look::parseAnchor(text);
     }
 
     std::string fontFile(std::string_view text) {
-        auto value = normalizeKey(text);
-        if (value == "big") return "bigFont.fnt";
-        if (value == "gold") return "goldFont.fnt";
-        return "chatFont.fnt";
+        return look::fontFile(look::parseFont(text));
     }
 
     std::string soundFile(std::string_view text) {
-        auto value = normalizeKey(text);
-        if (value == "blip") return "blip.wav"_spr;
-        if (value == "chirp") return "chirp.wav"_spr;
-        if (value == "soft") return "soft.wav"_spr;
-        return "";
+        return look::soundFile(look::parseSound(text));
     }
 
     std::string presetPersona(std::string_view preset, std::string const& name) {
@@ -223,18 +211,40 @@ namespace {
             else if (key == "typewriter") bubble.typewriter = parseBool(value).value_or(bubble.typewriter);
             else if (key == "avatar") {
                 auto mode = normalizeKey(value);
-                if (mode == "off" || mode == "none") bubble.avatar = AvatarMode::Off;
-                else if (mode == "player" || mode == "me") bubble.avatar = AvatarMode::Player;
+                if (mode == "off" || mode == "none") bubble.avatar.mode = AvatarMode::Off;
+                else if (mode == "player" || mode == "me") bubble.avatar.mode = AvatarMode::Player;
                 else if (auto icon = parseNumber(value)) {
-                    bubble.avatar = AvatarMode::Custom;
-                    bubble.avatarIcon = std::clamp(static_cast<int>(*icon), 1, 500);
+                    bubble.avatar.mode = AvatarMode::Icon;
+                    bubble.avatar.icon = std::clamp(static_cast<int>(*icon), 1, avatar::iconCount());
                 }
             }
             else if (key == "avatar-colors") {
+                // "main, second" or "main, second, glow"
                 auto parts = utils::string::split(value, ",");
-                if (parts.size() == 2) {
-                    if (auto c1 = parseNumber(parts[0])) bubble.avatarColor1 = std::clamp(static_cast<int>(*c1), 0, 120);
-                    if (auto c2 = parseNumber(parts[1])) bubble.avatarColor2 = std::clamp(static_cast<int>(*c2), 0, 120);
+                auto color = [](std::string_view part) -> std::optional<int> {
+                    if (auto n = parseNumber(part)) return std::clamp(static_cast<int>(*n), 0, avatar::COLOR_COUNT - 1);
+                    return std::nullopt;
+                };
+                if (parts.size() >= 2) {
+                    if (auto c = color(parts[0])) bubble.avatar.color1 = *c;
+                    if (auto c = color(parts[1])) bubble.avatar.color2 = *c;
+                }
+                if (parts.size() >= 3) {
+                    if (auto c = color(parts[2])) {
+                        bubble.avatar.glow = true;
+                        bubble.avatar.glowColor = *c;
+                    }
+                }
+            }
+            else if (key == "avatar-drawing") {
+                // The code from the avatar editor's Copy button
+                std::string code;
+                for (char c : value) {
+                    if (c == avatar::EMPTY || avatar::slotIndex(c) >= 0) code += c;
+                }
+                if (code.size() == static_cast<size_t>(avatar::PIXEL_COUNT)) {
+                    bubble.avatar.mode = AvatarMode::Drawn;
+                    bubble.avatar.pixels = code;
                 }
             }
             else if (key == "sound") p.soundFile = soundFile(value);
@@ -303,7 +313,7 @@ Profile profile::current() {
     auto name = clip(setting<std::string>("ai-name"), MAX_NAME_CHARS);
     p.name = name.empty() ? "Rival" : name;
     auto preset = setting<std::string>("personality-preset");
-    auto custom = clip(setting<std::string>("custom-personality"), MAX_PERSONA_CHARS);
+    auto custom = clip(settings::longText("custom-personality"), MAX_PERSONA_CHARS);
     p.length = parseLength(setting<std::string>("reply-length"));
 
     auto& events = p.events;
@@ -313,35 +323,33 @@ Profile profile::current() {
     events.newBest = setting<bool>("react-new-best");
     events.complete = setting<bool>("react-complete");
     events.closeCallRange = static_cast<int>(setting<int64_t>("close-call-range"));
-    events.onStart = clip(setting<std::string>("note-start"), MAX_NOTE_CHARS);
-    events.onDeath = clip(setting<std::string>("note-death"), MAX_NOTE_CHARS);
-    events.onNewBest = clip(setting<std::string>("note-new-best"), MAX_NOTE_CHARS);
-    events.onComplete = clip(setting<std::string>("note-complete"), MAX_NOTE_CHARS);
+    events.onStart = clip(settings::longText("note-start"), MAX_NOTE_CHARS);
+    events.onDeath = clip(settings::longText("note-death"), MAX_NOTE_CHARS);
+    events.onNewBest = clip(settings::longText("note-new-best"), MAX_NOTE_CHARS);
+    events.onComplete = clip(settings::longText("note-complete"), MAX_NOTE_CHARS);
 
     auto& bubble = p.bubble;
-    bubble.anchor = parseAnchor(setting<std::string>("bubble-position"));
-    bubble.offsetX = static_cast<float>(setting<int64_t>("bubble-offset-x"));
-    bubble.offsetY = static_cast<float>(setting<int64_t>("bubble-offset-y"));
-    bubble.width = static_cast<float>(setting<int64_t>("bubble-width"));
-    bubble.textScale = static_cast<float>(setting<double>("bubble-text-size"));
-    bubble.font = fontFile(setting<std::string>("bubble-font"));
-    bubble.background = setting<ccColor4B>("bubble-color");
-    bubble.textColor = setting<ccColor3B>("bubble-text-color");
-    bubble.nameColor = setting<ccColor3B>("bubble-name-color");
-    bubble.duration = static_cast<float>(setting<double>("bubble-duration"));
-    bubble.typewriter = setting<bool>("typewriter");
-    auto avatar = setting<std::string>("avatar");
-    bubble.avatar = avatar == "None" ? AvatarMode::Off : avatar == "My Icon" ? AvatarMode::Player : AvatarMode::Custom;
-    bubble.avatarIcon = static_cast<int>(setting<int64_t>("avatar-icon"));
-    bubble.avatarColor1 = static_cast<int>(setting<int64_t>("avatar-color-1"));
-    bubble.avatarColor2 = static_cast<int>(setting<int64_t>("avatar-color-2"));
+    auto bubbleLook = settings::bubble();
+    bubble.anchor = bubbleLook.anchor;
+    bubble.offsetX = bubbleLook.offsetX;
+    bubble.offsetY = bubbleLook.offsetY;
+    bubble.width = bubbleLook.width;
+    bubble.textScale = bubbleLook.textScale;
+    bubble.font = look::fontFile(bubbleLook.font);
+    bubble.background = bubbleLook.background;
+    bubble.textColor = bubbleLook.textColor;
+    bubble.nameColor = bubbleLook.nameColor;
+    bubble.duration = bubbleLook.duration;
+    bubble.typewriter = bubbleLook.typewriter;
+    bubble.avatar = settings::avatar();
 
-    p.soundFile = soundFile(setting<std::string>("talk-sound"));
-    p.soundVolume = static_cast<float>(setting<int64_t>("talk-volume")) / 100.f;
+    p.soundFile = look::soundFile(bubbleLook.sound);
+    p.soundVolume = static_cast<float>(bubbleLook.volume) / 100.f;
 
-    p.chatCustomColor = setting<std::string>("chat-theme") == "Custom Color";
-    p.chatColor = setting<ccColor3B>("chat-color");
-    p.chatLarge = setting<std::string>("chat-size") == "Large";
+    auto chat = settings::chatLook();
+    p.chatCustomColor = chat.customColor;
+    p.chatColor = chat.color;
+    p.chatLarge = chat.large;
 
     // Outside a level (e.g. testing from the settings page) only the player's settings apply
     std::string levelPersona;

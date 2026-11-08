@@ -5,6 +5,7 @@
 #include "AIClient.hpp"
 #include "ChatPopup.hpp"
 #include "ConnectionPopup.hpp"
+#include "GameInfo.hpp"
 
 using namespace geode::prelude;
 
@@ -81,6 +82,8 @@ class $modify(AIPlayLayer, PlayLayer) {
             .bestPercent = level->m_normalPercent.value(),
             .totalAttempts = level->m_attempts.value(),
             .platformer = m_isPlatformer,
+            .facts = gameinfo::levelFacts(level, m_isPlatformer),
+            .about = gameinfo::levelAbout(level, m_isPlatformer),
         });
         client.onLevelStart();
         this->addChatButton();
@@ -127,7 +130,8 @@ class $modify(AIPlayLayer, PlayLayer) {
         AIClient::get().onDeath(
             m_isPlatformer ? 0 : this->getCurrentPercentInt(),
             m_attempts,
-            m_isPracticeMode || m_isTestMode
+            m_isPracticeMode || m_isTestMode,
+            gameinfo::situation(player, m_gameState.m_isDualMode)
         );
     }
 

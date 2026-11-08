@@ -267,6 +267,7 @@ web::WebFuture providers::sendChat(Connection const& connection, ChatPayload con
                 { "player_id", payload.playerID },
                 { "level_id", payload.levelID },
                 { "persona", payload.persona },
+                { "level", payload.levelAbout },
                 { "history", std::move(history) },
                 { "message", payload.message },
             });

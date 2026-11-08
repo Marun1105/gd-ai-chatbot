@@ -10,6 +10,7 @@
 #include <chrono>
 #include <deque>
 #include <functional>
+#include <map>
 #include <random>
 #include <string>
 #include <vector>
@@ -33,6 +34,9 @@ public:
         int bestPercent = 0;
         int totalAttempts = 0;
         bool platformer = false;
+        // One-line summary for event messages, and the full version for the system prompt
+        std::string facts;
+        std::string about;
     };
 
     static AIClient& get();
@@ -44,7 +48,8 @@ public:
     void sendChat(std::string const& message);
 
     void onLevelStart();
-    void onDeath(int percent, int attempt, bool practice);
+    // situation: what the player was doing, e.g. "in the wave, 2x speed"
+    void onDeath(int percent, int attempt, bool practice, std::string const& situation);
     void onComplete(int attempt, bool practice);
 
     bool isWaiting() const;
@@ -89,6 +94,8 @@ private:
     void remember(Turn userTurn, std::string reply);
     void notifyUpdate();
     std::string statusLine() const;
+    // "63% (4x), 41% (3x)" for this session, or empty
+    std::string deathHotspots() const;
 
     geode::async::TaskHolder<geode::utils::web::WebResponse> m_request;
     bool m_requestIsChat = false;
@@ -101,6 +108,10 @@ private:
     unsigned m_generation = 0;
     int m_attempt = 0;
     std::vector<int> m_unreportedDeaths;
+    // Death stats for this visit to the level, so the AI can spot patterns
+    std::map<int, int> m_deathsAt;
+    int m_sessionDeaths = 0;
+    std::chrono::steady_clock::time_point m_sessionStart{};
     std::chrono::steady_clock::time_point m_lastSent{};
     std::function<void()> m_onUpdate;
     std::string m_playerID;

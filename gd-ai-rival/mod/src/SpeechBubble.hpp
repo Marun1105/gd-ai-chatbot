@@ -12,6 +12,14 @@ public:
     static void show(Profile const& profile, std::string const& text, bool isError = false);
     // Animated "..." while waiting for a chat reply
     static void showTyping(Profile const& profile);
+    // For the bubble designer: not attached to the level and never fades.
+    // With animate, the text types itself out with the talking sound.
+    static SpeechBubble* createPreview(Profile const& profile, std::string const& text, bool animate);
+
+    // Where the bubble goes on a screen-sized parent
+    void place(BubbleStyle const& style);
+    // Center of a bubble of this size at an anchor, before any nudge
+    static cocos2d::CCPoint anchorPosition(BubbleAnchor anchor, cocos2d::CCSize size, cocos2d::CCSize screen);
 
 protected:
     enum class Style { Reply, Error, Typing };
@@ -21,7 +29,6 @@ protected:
 
     bool initBubble(Profile const& profile, std::string const& text, Style style);
     cocos2d::CCNode* createAvatar(BubbleStyle const& style);
-    void place(BubbleStyle const& style);
     void revealStep(float);
     void typingStep(float);
     void startTimer(float seconds);
@@ -42,4 +49,6 @@ protected:
     std::string m_soundFile;
     float m_volume = 0.f;
     int m_typingDots = 0;
+    bool m_preview = false;
+    bool m_animate = false;
 };

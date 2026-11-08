@@ -50,6 +50,8 @@ struct ChatPayload {
     // (fromAI, text) pairs, oldest first
     std::vector<std::pair<bool, std::string>> history;
     std::string message;
+    // Facts about the current level, for a proxy to put in its own system prompt
+    std::string levelAbout;
     std::string playerID;
     int levelID = 0;
 };
