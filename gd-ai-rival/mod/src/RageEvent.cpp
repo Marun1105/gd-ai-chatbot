@@ -1,4 +1,5 @@
 #include "RageEvent.hpp"
+#include "RageFight.hpp"
 
 #include <algorithm>
 #include <array>
@@ -59,6 +60,11 @@ namespace {
 // ---- The creature ----
 
 CCSprite* RageEvent::createFace(float size) {
+    // The rendered 3D model when it's there
+    if (auto face = CCSprite::create("grin-face.png"_spr)) {
+        face->setScale(size / face->getContentSize().width);
+        return face;
+    }
     auto draw = CCDrawNode::create();
     CCPoint c { FACE_BASE / 2, FACE_BASE / 2 };
 
@@ -128,10 +134,10 @@ CCSprite* RageEvent::createFace(float size) {
 
 // ---- Setup ----
 
-void RageEvent::play(std::function<void()> onDone) {
+void RageEvent::play(std::function<void(RageOutcome)> onDone) {
     auto playLayer = PlayLayer::get();
     if (s_current || !playLayer || !playLayer->getParent()) {
-        if (onDone) onDone();
+        if (onDone) onDone({});
         return;
     }
     auto event = new RageEvent();
@@ -149,7 +155,7 @@ bool RageEvent::isActive() {
     return s_current != nullptr;
 }
 
-bool RageEvent::init(std::function<void()> onDone) {
+bool RageEvent::init(std::function<void(RageOutcome)> onDone) {
     if (!CCLayer::init()) return false;
     m_onDone = std::move(onDone);
     m_win = CCDirector::get()->getWinSize();
@@ -182,7 +188,10 @@ bool RageEvent::init(std::function<void()> onDone) {
     m_shardLayer = CCNode::create();
     m_root->addChild(m_shardLayer, 3);
 
-    m_face = createFace(m_win.height * .9f);
+    auto textures = CCTextureCache::sharedTextureCache();
+    m_faceTexture = textures->addImage("grin-face.png"_spr, false);
+    m_roarTexture = textures->addImage("grin-roar.png"_spr, false);
+    m_face = createFace(m_win.height * .95f);
     m_face->setPosition(m_win / 2);
     m_face->setVisible(false);
     m_root->addChild(m_face, 4);
@@ -204,10 +213,15 @@ bool RageEvent::init(std::function<void()> onDone) {
         CCDelayTime::create(LUNGE_AFTER), CallFuncExt::create([this] { this->lunge(); }),
         CCDelayTime::create(IMPACT_AFTER), CallFuncExt::create([this] { this->impact(); }),
         CCDelayTime::create(SHATTER_AFTER), CallFuncExt::create([this] { this->shatter(); }),
-        CCDelayTime::create(FADE_AFTER), CallFuncExt::create([this] { this->fadeAway(); }),
-        CCDelayTime::create(FADE_TIME + .05f), CallFuncExt::create([this] { this->finish(); }),
+        CCDelayTime::create(FADE_AFTER), CallFuncExt::create([this] { this->afterShatter(); }),
         nullptr
     ));
+    return true;
+}
+
+bool RageEvent::ccTouchBegan(CCTouch* touch, CCEvent*) {
+    // Every touch is ours; during the fight it's a shot
+    if (m_fight && m_fight->isVisible()) m_fight->shoot(touch->getLocation());
     return true;
 }
 
@@ -344,6 +358,9 @@ void RageEvent::buildShards(float) {
 void RageEvent::roar() {
     playSound("roar.wav"_spr);
     m_face->setVisible(true);
+    if (m_faceTexture && m_roarTexture) {
+        this->schedule(schedule_selector(RageEvent::roarFrame), .11f);
+    }
     float target = m_face->getScale();
     m_face->setScale(target * .45f);
     m_face->setOpacity(0);
@@ -361,8 +378,16 @@ void RageEvent::roar() {
     m_shakeStrength = 5.f;
 }
 
+void RageEvent::roarFrame(float) {
+    // Jaw working while it roars
+    m_mouthOpen = !m_mouthOpen;
+    m_face->setTexture(m_mouthOpen ? m_roarTexture : m_faceTexture);
+}
+
 void RageEvent::lunge() {
-    // It throws itself at the glass
+    // It throws itself at the glass, mouth wide open
+    this->unschedule(schedule_selector(RageEvent::roarFrame));
+    if (m_roarTexture) m_face->setTexture(m_roarTexture);
     float target = m_face->getScale();
     m_face->stopAllActions();
     m_face->runAction(CCEaseIn::create(CCScaleTo::create(IMPACT_AFTER, target * 3.2f), 2.f));
@@ -474,6 +499,34 @@ void RageEvent::shake(float dt) {
     m_root->setPosition({ randomIn(-strength, strength), randomIn(-strength, strength) });
 }
 
+void RageEvent::afterShatter() {
+    bool fight = Mod::get()->getSettingValue<bool>("rage-fight");
+    if (!fight) {
+        this->fadeAway();
+        this->runAction(CCSequence::create(
+            CCDelayTime::create(FADE_TIME + .05f), CallFuncExt::create([this] { this->finish(); }), nullptr
+        ));
+        return;
+    }
+
+    // Into the broken screen to fight it
+    m_face->stopAllActions();
+    m_face->setVisible(false);
+    m_shardLayer->setVisible(false);
+    this->unschedule(schedule_selector(RageEvent::fall));
+    m_fight = RageFight::create([this](RageFight::Result result) {
+        m_outcome.fought = true;
+        m_outcome.won = result.won;
+        m_outcome.hits = result.hits;
+        m_fight->setVisible(false);
+        this->fadeAway();
+        this->runAction(CCSequence::create(
+            CCDelayTime::create(FADE_TIME + .05f), CallFuncExt::create([this] { this->finish(); }), nullptr
+        ));
+    });
+    m_root->addChild(m_fight, 6);
+}
+
 void RageEvent::fadeAway() {
     // Back to the level
     m_black->runAction(CCFadeTo::create(FADE_TIME, 0));
@@ -488,8 +541,9 @@ void RageEvent::finish() {
     if (s_current == this) s_current = nullptr;
     // This runs inside one of our own actions: keep the object alive until
     // the end of the frame instead of deleting it mid-call
+    auto outcome = m_outcome;
     this->retain();
     this->removeFromParent();
     this->autorelease();
-    if (onDone) onDone();
+    if (onDone) onDone(outcome);
 }

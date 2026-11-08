@@ -29,8 +29,8 @@ namespace rage {
     void onComplete();
     // While the player is alive and unpaused
     void coolDown(float seconds);
-    // After the jumpscare: still annoyed, but no longer at the limit
-    void afterSnap();
+    // After the screen break: still annoyed (or calm, if the player beat it)
+    void afterSnap(float anger);
 
     float anger();
     // 0..1 for the bar

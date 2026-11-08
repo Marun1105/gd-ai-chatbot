@@ -231,15 +231,26 @@ void AIClient::onDeath(int percent, int attempt, bool practice, std::string cons
     this->sendEvent(withNote(std::move(text), rules.onDeath), fmt::format("* Died{}", where));
 }
 
-void AIClient::onRage() {
+void AIClient::onRage(bool fought, bool won) {
     if (!m_active || !setting("auto-reactions")) return;
     if (!this->canSendEvent(Priority::Always)) return;
-    this->sendEvent(
+    std::string text =
         "[GAME EVENT] Your anger hit 100/100 and you snapped: the screen went dark, you roared, lunged at the "
-        "glass from the inside and smashed the player's screen to pieces. Their screen is back now and your "
-        "anger has dropped a little. Say something about what you just did.",
-        "* " + this->getName() + " smashed your screen"
-    );
+        "glass from the inside and smashed the player's screen to pieces.";
+    std::string display = "* " + this->getName() + " smashed your screen";
+    if (fought && won) {
+        text += " Then the player came into your world and fought you, and beat you. You are humiliated and your "
+            "anger is gone, for now. React to losing.";
+        display += ", and you beat it";
+    }
+    else if (fought) {
+        text += " Then the player came into your world to fight you, and you won. Your anger is still high. Gloat.";
+        display += ", and won the fight";
+    }
+    else {
+        text += " Their screen is back now and your anger has dropped a little. Say something about what you just did.";
+    }
+    this->sendEvent(std::move(text), std::move(display));
 }
 
 void AIClient::onComplete(int attempt, bool practice) {

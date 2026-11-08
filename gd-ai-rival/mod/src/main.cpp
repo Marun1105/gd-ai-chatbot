@@ -110,14 +110,15 @@ class $modify(AIPlayLayer, PlayLayer) {
         m_fields->rageBar = bar;
     }
 
-    void rageFinished() {
-        rage::afterSnap();
+    void rageFinished(RageOutcome outcome) {
+        // Beating Grin calms it completely; losing keeps it seething
+        rage::afterSnap(outcome.fought ? (outcome.won ? 0.f : 60.f) : 35.f);
         if (m_fields->rageBar) m_fields->rageBar->refresh();
         if (m_fields->resetPending) {
             m_fields->resetPending = false;
             this->resetLevel();
         }
-        AIClient::get().onRage();
+        AIClient::get().onRage(outcome.fought, outcome.won);
     }
 
     void addChatButton() {
@@ -170,8 +171,8 @@ class $modify(AIPlayLayer, PlayLayer) {
         // The screen break gets its own comment once it's over
         AIClient::get().onDeath(percent, m_attempts, m_isPracticeMode || m_isTestMode, situation, snapped);
         if (snapped) {
-            RageEvent::play([] {
-                if (auto playLayer = static_cast<AIPlayLayer*>(PlayLayer::get())) playLayer->rageFinished();
+            RageEvent::play([](RageOutcome outcome) {
+                if (auto playLayer = static_cast<AIPlayLayer*>(PlayLayer::get())) playLayer->rageFinished(outcome);
             });
         }
     }

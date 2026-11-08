@@ -16,7 +16,9 @@
 	],
 	"resources": {
 		"files": [
-			"resources/sounds/*.wav"
+			"resources/sounds/*.wav",
+			"resources/grin/*.png",
+			"resources/grin/*.jpg"
 		]
 	},
 	"settings": {
@@ -136,6 +138,13 @@
 			"name": "Screen Break",
 			"description": "When the bar fills up, the screen goes dark, Grin roars and smashes your screen from the inside, and it shatters. The level waits until it is over. No flashing lights, but it is a scare: turn it off if you don't want that.",
 			"default": true
+		},
+		"rage-fight": {
+			"type": "bool",
+			"name": "Fight Back",
+			"description": "After the screen breaks, fight Grin in a short mini-game inside your broken screen: tap Grin to hit it (the head hurts more) and shoot it enough to stop its charges before they reach you. Win and its anger drops to zero; lose and it stays angry.",
+			"default": true,
+			"enable-if": "rage-jumpscare"
 		},
 		"rage-volume": {
 			"type": "int",

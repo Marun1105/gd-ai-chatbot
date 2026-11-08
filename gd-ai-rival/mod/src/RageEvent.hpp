@@ -5,13 +5,22 @@
 #include <functional>
 #include <vector>
 
+class RageFight;
+
+struct RageOutcome {
+    // The fight mini-game was played, and how it went
+    bool fought = false;
+    bool won = false;
+    int hits = 0;
+};
+
 // Grin snaps: the screen goes dark, it roars and lunges at you, the glass
 // cracks where it hits, then the whole screen (a snapshot of the level taken
 // the moment you died) shatters into pieces that fall away. Plays over
 // everything and holds the level reset until it's over.
 class RageEvent : public cocos2d::CCLayer {
 public:
-    static void play(std::function<void()> onDone);
+    static void play(std::function<void(RageOutcome)> onDone);
     static bool isActive();
 
     // The creature's face, drawn once into a sprite (also used by the bar)
@@ -25,10 +34,10 @@ protected:
         float delay = 0.f;
     };
 
-    bool init(std::function<void()> onDone);
+    bool init(std::function<void(RageOutcome)> onDone);
     void onExit() override;
     void registerWithTouchDispatcher() override;
-    bool ccTouchBegan(cocos2d::CCTouch*, cocos2d::CCEvent*) override { return true; }
+    bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent*) override;
     void keyBackClicked() override {}
 
     void planCracks();
@@ -42,10 +51,18 @@ protected:
     void shatter();
     void fall(float dt);
     void shake(float dt);
+    void afterShatter();
+    void roarFrame(float);
     void fadeAway();
     void finish();
 
-    std::function<void()> m_onDone;
+    std::function<void(RageOutcome)> m_onDone;
+    RageOutcome m_outcome;
+    RageFight* m_fight = nullptr;
+    // The 3D renders of the face, closed and open mouth (null if missing)
+    cocos2d::CCTexture2D* m_faceTexture = nullptr;
+    cocos2d::CCTexture2D* m_roarTexture = nullptr;
+    bool m_mouthOpen = false;
     bool m_finished = false;
     cocos2d::CCSize m_win;
 

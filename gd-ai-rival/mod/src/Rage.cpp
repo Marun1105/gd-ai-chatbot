@@ -123,8 +123,8 @@ void rage::coolDown(float seconds) {
     s_anger = std::max(0.f, s_anger - seconds * .1f);
 }
 
-void rage::afterSnap() {
-    s_anger = 35.f;
+void rage::afterSnap(float anger) {
+    s_anger = std::clamp(anger, 0.f, MAX - 1.f);
     s_spots.clear();
 }
 

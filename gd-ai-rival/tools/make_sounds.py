@@ -123,10 +123,38 @@ def shatter():
             out[begin + j] += math.sin(2 * math.pi * f * tt) * math.exp(-tt * decay) * amp
     return out
 
+def shot():
+    # A punchy blaster: a falling zap over a short noise crack
+    rnd = random.Random(31)
+    n = int(RATE * 0.22)
+    phase, out = 0.0, []
+    for i in range(n):
+        t = i / RATE
+        f = 1400 * math.exp(-t * 18) + 140
+        phase += 2 * math.pi * f / RATE
+        zap = (1 if math.sin(phase) >= 0 else -1) * math.exp(-t * 16) * 0.6
+        crack_ = rnd.uniform(-1, 1) * math.exp(-t * 60)
+        out.append(zap + crack_)
+    return lowpass(out, 0.55)
+
+def hit():
+    # The shot landing: a thick thud with a wet crunch on top
+    rnd = random.Random(41)
+    n = int(RATE * 0.28)
+    noise = [rnd.uniform(-1, 1) for _ in range(n)]
+    crunch = lowpass(noise, 0.25)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        thud = math.sin(2 * math.pi * (90 + 60 * math.exp(-t * 30)) * t) * math.exp(-t * 14)
+        out.append(thud * 1.2 + crunch[i] * math.exp(-t * 22) * 0.9)
+    return [math.tanh(1.8 * s) for s in out]
+
 out_dir = sys.argv[1]
 for name, gen, level in (
     ("blip", blip, 0.5), ("chirp", chirp, 0.5), ("soft", soft, 0.5),
     ("roar", roar, 0.9), ("crack", crack, 0.8), ("shatter", shatter, 0.8),
+    ("shot", shot, 0.7), ("hit", hit, 0.8),
 ):
     write(f"{out_dir}/{name}.wav", gen(), level)
     print(name, "ok")
