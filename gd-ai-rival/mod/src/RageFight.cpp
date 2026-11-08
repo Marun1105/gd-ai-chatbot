@@ -159,13 +159,14 @@ void RageFight::shoot(CCPoint location) {
     ring->runAction(CCSequence::create(CCScaleTo::create(.15f, 1.5f), CCRemoveSelf::create(), nullptr));
     m_effects->addChild(ring);
 
-    // Hit test in the picture's own coordinates: the big round head, or the thin body
+    // Hit test in the picture's own coordinates (0..1, measured from the
+    // render): the head, or the thin body
     auto size = m_grin->getContentSize();
     auto onGrin = m_grin->convertToNodeSpace(location);
     float hx = onGrin.x / size.width, hy = onGrin.y / size.height;
-    float dx = hx - .5f, dy = hy - .71f;
-    bool head = dx * dx + dy * dy < .23f * .23f;
-    bool body = hx > .41f && hx < .59f && hy > .06f && hy < .52f;
+    float dx = (hx - .472f) / .13f, dy = (hy - .783f) / .095f;
+    bool head = dx * dx + dy * dy < 1.f;
+    bool body = hx > .43f && hx < .59f && hy > .33f && hy < .7f;
     if (head || body) {
         m_hits++;
         this->damageGrin(head ? HEAD_DAMAGE : BODY_DAMAGE, local);
