@@ -32,7 +32,7 @@ const MAX_BODY_BYTES = 16_384;
 const MAX_HISTORY = 20;
 const MAX_TURN_CHARS = 500;
 const MAX_MESSAGE_CHARS = 400;
-const MAX_PERSONA_CHARS = 600;
+const MAX_PERSONA_CHARS = 1000;
 const MAX_LEVEL_CHARS = 1200;
 // Thinking can't be turned off and counts toward max_tokens, so leave room
 // for it on top of the one or two sentences we actually want

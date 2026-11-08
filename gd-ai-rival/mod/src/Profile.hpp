@@ -2,6 +2,8 @@
 
 #include <Geode/Geode.hpp>
 
+#include "Avatar.hpp"
+
 #include <map>
 #include <string>
 
@@ -13,7 +15,6 @@
 
 enum class ReplyLength { VeryShort, Short, Medium };
 enum class BubbleAnchor { Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
-enum class AvatarMode { Off, Custom, Player };
 
 struct BubbleStyle {
     BubbleAnchor anchor = BubbleAnchor::Top;
@@ -27,10 +28,7 @@ struct BubbleStyle {
     cocos2d::ccColor3B nameColor { 255, 255, 255 };
     float duration = 4.f;
     bool typewriter = true;
-    AvatarMode avatar = AvatarMode::Custom;
-    int avatarIcon = 1;
-    int avatarColor1 = 11;
-    int avatarColor2 = 3;
+    AvatarLook avatar;
 };
 
 struct EventRules {

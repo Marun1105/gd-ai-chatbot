@@ -65,10 +65,19 @@
 			]
 		},
 		"custom-personality": {
-			"type": "string",
+			"type": "custom:long-text",
 			"name": "Custom Personality",
-			"description": "Used when Personality is <cy>Custom</c>. Describe who the AI is and how it talks, up to 600 characters. Short replies and no hateful content are always enforced on top.",
-			"default": ""
+			"description": "Used when Personality is <cy>Custom</c>. Describe who the AI is and how it talks, up to 1000 characters. Tap <cy>Edit</c> for a big text box; you can paste a prompt you found online. Short replies and no hateful content are always enforced on top.",
+			"default": "",
+			"max-length": 1000,
+			"hint": "Who is the AI and how does it talk? Short replies and no hateful content are always added on top.",
+			"placeholder": "For example: You are Glitch, a robot that speaks in short beeps and gets very excited about wave parts.",
+			"examples": [
+				"You are Glitch, a malfunctioning robot fan of Geometry Dash. You speak in short excited bursts, sometimes add BEEP, and you take every death personally.",
+				"You are Grandma Rose, a sweet old lady who has never played a video game. You are confused but very proud of every attempt, and you worry when the player dies a lot.",
+				"You are a dramatic sports commentator calling the player's run live, treating every jump like the final of a world championship.",
+				"You are the level itself. You are smug about every spike that kills the player and quietly nervous when they get close to the end."
+			]
 		},
 		"reply-length": {
 			"type": "string",
@@ -198,31 +207,63 @@
 			"enable-if": "auto-reactions"
 		},
 		"note-start": {
-			"type": "string",
+			"type": "custom:long-text",
 			"name": "Level Start Direction",
 			"description": "Extra direction for the AI at this moment, up to 200 characters, for example <cg>Warn me about the wave part.</c>. A level can set its own.",
 			"default": "",
+			"max-length": 200,
+			"hint": "What should the AI do when you enter a level? Levels can set their own.",
+			"placeholder": "For example: Warn me about the hardest part.",
+			"examples": [
+				"Warn me about the hardest part.",
+				"Hype me up like it's a boss fight.",
+				"Guess how many attempts this will take me."
+			],
 			"enable-if": "auto-reactions"
 		},
 		"note-death": {
-			"type": "string",
+			"type": "custom:long-text",
 			"name": "Death Direction",
 			"description": "Extra direction for the AI at this moment, up to 200 characters, for example <cg>Give me a tip instead of roasting me.</c>. A level can set its own.",
 			"default": "",
+			"max-length": 200,
+			"hint": "What should the AI do when you die? Levels can set their own.",
+			"placeholder": "For example: Give me a quick tip instead of roasting me.",
+			"examples": [
+				"Give me a quick tip instead of roasting me.",
+				"Count my deaths at the same spot.",
+				"Keep it to one word."
+			],
 			"enable-if": "auto-reactions"
 		},
 		"note-new-best": {
-			"type": "string",
+			"type": "custom:long-text",
 			"name": "New Best Direction",
 			"description": "Extra direction for the AI at this moment, up to 200 characters, for example <cg>Act shocked.</c>. A level can set its own.",
 			"default": "",
+			"max-length": 200,
+			"hint": "What should the AI do when you get a new best? Levels can set their own.",
+			"placeholder": "For example: Act shocked.",
+			"examples": [
+				"Act shocked.",
+				"Remind me how far is left.",
+				"Pretend you're not impressed."
+			],
 			"enable-if": "auto-reactions"
 		},
 		"note-complete": {
-			"type": "string",
+			"type": "custom:long-text",
 			"name": "Completion Direction",
 			"description": "Extra direction for the AI at this moment, up to 200 characters, for example <cg>Challenge me to do it again faster.</c>. A level can set its own.",
 			"default": "",
+			"max-length": 200,
+			"hint": "What should the AI do when you beat the level? Levels can set their own.",
+			"placeholder": "For example: Challenge me to beat it again faster.",
+			"examples": [
+				"Challenge me to beat it again faster.",
+				"Throw a tiny party.",
+				"Act like you knew I could do it all along."
+			],
 			"enable-if": "auto-reactions"
 		},
 		"bubble-title": {
@@ -348,39 +389,18 @@
 			"name": "Avatar"
 		},
 		"avatar": {
-			"type": "string",
-			"name": "Avatar",
-			"description": "Icon shown in the bubble. <cy>AI Icon</c>: the cube set below. <cy>My Icon</c>: your own cube and colors, like a mirror rival. <cy>None</c>: no icon.",
-			"default": "AI Icon",
-			"one-of": [
-				"AI Icon",
-				"My Icon",
-				"None"
-			]
-		},
-		"avatar-icon": {
-			"type": "int",
-			"name": "Cube Icon",
-			"description": "Cube icon number, as in the icon kit (1 is the default cube).",
-			"default": 1,
-			"min": 1,
-			"max": 500
-		},
-		"avatar-color-1": {
-			"type": "int",
-			"name": "Main Color",
-			"description": "Main color number from GD's color palette (0-106).",
-			"default": 11,
-			"min": 0,
-			"max": 106
-		},
-		"avatar-color-2": {
-			"type": "int",
-			"name": "Secondary Color",
-			"description": "Secondary color number from GD's color palette (0-106).",
-			"default": 3,
-			"min": 0,
-			"max": 106
+			"type": "custom:avatar",
+			"name": "Icon",
+			"description": "The icon next to the AI's name. Tap <cy>Edit</c> to pick a cube and colors from the icon kit, draw your own 16x16 icon, copy your own icon, or turn it off.",
+			"default": {
+				"mode": "icon",
+				"icon": 1,
+				"color1": 11,
+				"color2": 3,
+				"glow": false,
+				"glow-color": 3,
+				"pixels": ""
+			}
 		},
 		"chat-title": {
 			"type": "title",

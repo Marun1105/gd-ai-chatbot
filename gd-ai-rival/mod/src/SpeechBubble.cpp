@@ -52,19 +52,7 @@ void SpeechBubble::attach(SpeechBubble* bubble) {
 }
 
 CCNode* SpeechBubble::createAvatar(BubbleStyle const& style) {
-    auto gm = GameManager::get();
-    bool mine = style.avatar == AvatarMode::Player;
-    int icon = mine ? gm->getPlayerFrame() : style.avatarIcon;
-
-    auto player = SimplePlayer::create(icon);
-    player->updatePlayerFrame(icon, IconType::Cube);
-    player->setColors(
-        gm->colorForIdx(mine ? gm->getPlayerColor() : style.avatarColor1),
-        gm->colorForIdx(mine ? gm->getPlayerColor2() : style.avatarColor2)
-    );
-    // Cube icons are about 30 units across at scale 1
-    player->setScale(AVATAR_SIZE / 30.f * .9f);
-    return player;
+    return avatar::create(style.avatar, AVATAR_SIZE);
 }
 
 bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, Style style) {
@@ -75,7 +63,7 @@ bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, S
     auto winSize = CCDirector::get()->getWinSize();
 
     float width = std::clamp(look.width, 150.f, winSize.width - 20.f);
-    bool hasAvatar = look.avatar != AvatarMode::Off;
+    bool hasAvatar = look.avatar.mode != AvatarMode::Off;
     float textLeft = PADDING + (hasAvatar ? AVATAR_SIZE + PADDING : 0.f);
     float textWidth = width - textLeft - PADDING;
     float textScale = std::clamp(look.textScale, .3f, 1.5f);
@@ -119,8 +107,10 @@ bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, S
 
     if (hasAvatar) {
         m_avatar = this->createAvatar(look);
-        m_avatar->setPosition({ PADDING + AVATAR_SIZE / 2, height / 2 });
-        this->addChild(m_avatar);
+        if (m_avatar) {
+            m_avatar->setPosition({ PADDING + AVATAR_SIZE / 2, height / 2 });
+            this->addChild(m_avatar);
+        }
     }
 
     m_nameLabel->setPosition({ textLeft, height - PADDING });

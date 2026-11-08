@@ -1,5 +1,8 @@
 # v1.0.0
 
+- Avatar editor: pick a cube and colors from the icon kit by sight instead of by number, or draw your own 16x16 icon, with a live preview of the bubble.
+- Big text editor for the custom personality (now up to 1000 characters) and the reaction directions, with paste and examples.
+
 - In-level chat with an AI, opened with a keybind (PC), the pause menu or an in-game button (phones).
 - Automatic reactions to deaths, new bests and completions, with a cooldown so it doesn't spam.
 - Works with Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, any OpenAI-compatible API, or a creator's proxy.

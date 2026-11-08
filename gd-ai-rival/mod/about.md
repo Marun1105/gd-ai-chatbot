@@ -6,7 +6,7 @@ Talk to an AI while you play. It watches your run and reacts to what happens:
 - **Reactions**: it comments on deaths, new bests and completions, without spamming every attempt.
 - **Memory**: it remembers the recent conversation for the current level.
 - **Personalities**: Rival, Coach, Chill, Sarcastic, or write your own.
-- **Your style**: bubble colors, font, size and position, a cube avatar (any icon, or your own), letter-by-letter text with talking sounds, chat window theme.
+- **Your style**: bubble colors, font, size and position, an avatar you pick from the icon kit or draw yourself in the built-in editor, letter-by-letter text with talking sounds, chat window theme.
 - **Level creators** can give their level its own AI character (see below).
 - **Any AI**: Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, or any OpenAI-compatible API.
 
@@ -81,7 +81,7 @@ Example:
 
 **Character**
 - `name`: the AI's name
-- `persona`: who it is and how it talks (up to 600 characters)
+- `persona`: who it is and how it talks (up to 1000 characters)
 - `preset`: `rival`, `coach`, `chill` or `sarcastic`
 - `length`: `very short`, `short` or `medium`
 
@@ -95,7 +95,8 @@ Example:
 - `bubble-x`, `bubble-y`: nudge the bubble
 - `bubble-color` (`r, g, b, alpha`), `text-color`, `name-color` (`r, g, b`, or `#rrggbb`)
 - `font`: `chat`, `big` or `gold`; `text-size`; `width`; `duration` (seconds); `typewriter`: `on` or `off`
-- `avatar`: a cube icon number, `player` (the player's own cube) or `off`; `avatar-colors`: two GD color numbers
+- `avatar`: a cube icon number, `player` (the player's own cube) or `off`; `avatar-colors`: two GD color numbers, plus an optional third for a glow
+- `avatar-drawing`: a drawn icon. Draw it in the mod's avatar editor (Settings, Icon, Edit, Drawing), press **Copy** under Code and paste the code here
 - `sound`: `blip`, `chirp`, `soft` or `off`
 - `chat-color`: color of the chat window
 
