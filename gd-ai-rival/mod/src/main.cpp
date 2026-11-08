@@ -4,6 +4,7 @@
 
 #include "AIClient.hpp"
 #include "ChatPopup.hpp"
+#include "ConnectionPopup.hpp"
 
 using namespace geode::prelude;
 
@@ -44,6 +45,11 @@ namespace {
 }
 
 $on_mod(Loaded) {
+    // "Set Up" button on the mod's settings page
+    ButtonSettingPressedEventV3(Mod::get(), "connection").listen([](std::string_view) {
+        ConnectionPopup::create()->show();
+    }).leak();
+
 #ifdef GEODE_IS_DESKTOP
     listenForKeybindSettingPresses("open-chat", [](Keybind const&, bool down, bool repeat, double) {
         if (!down || repeat) return false;
@@ -59,8 +65,8 @@ class $modify(AIPlayLayer, PlayLayer) {
         bool deathReported = false;
     };
 
-    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
-        if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
+    bool init(GJGameLevel* level, bool dontCreateObjects) {
+        if (!PlayLayer::init(level, dontCreateObjects)) return false;
 
         auto& client = AIClient::get();
         if (!isLevelAllowed(level->m_levelID.value())) {
@@ -98,7 +104,7 @@ class $modify(AIPlayLayer, PlayLayer) {
         // Sit just left of the pause button
         auto winSize = CCDirector::get()->getWinSize();
         CCPoint position { winSize.width - 60.f, winSize.height - 20.f };
-        if (auto pauseButton = m_uiLayer->getChildByIDRecursive("pause-button")) {
+        if (auto pauseButton = m_uiLayer->m_pauseBtn) {
             position = m_uiLayer->convertToNodeSpace(pauseButton->convertToWorldSpaceAR({ 0.f, 0.f }));
             position.x -= 34.f;
         }
@@ -155,7 +161,8 @@ class $modify(AIPauseLayer, PauseLayer) {
         auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(AIPauseLayer::onAIChat));
         button->setID("chat-button"_spr);
 
-        // node-ids gives the pause menu an empty column on the right for mods
+        // If the Node IDs mod is installed, share its empty column on the right
+        // with other mods; otherwise put our own button in that same free spot
         if (auto menu = this->getChildByIDRecursive("right-button-menu")) {
             menu->addChild(button);
             menu->updateLayout();
@@ -165,7 +172,7 @@ class $modify(AIPauseLayer, PauseLayer) {
         auto winSize = CCDirector::get()->getWinSize();
         auto menu = CCMenu::create();
         menu->setID("chat-menu"_spr);
-        menu->setPosition({ winSize.width - 36.f, winSize.height - 36.f });
+        menu->setPosition({ winSize.width - 36.f, winSize.height / 2 });
         menu->addChild(button);
         button->setPosition({ 0.f, 0.f });
         this->addChild(menu, 10);

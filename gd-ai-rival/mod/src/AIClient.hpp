@@ -4,6 +4,9 @@
 #include <Geode/utils/async.hpp>
 #include <Geode/utils/web.hpp>
 
+#include "Profile.hpp"
+#include "Providers.hpp"
+
 #include <chrono>
 #include <deque>
 #include <functional>
@@ -11,7 +14,7 @@
 #include <string>
 #include <vector>
 
-// Owns the conversation with the proxy: the rolling memory, the in-flight
+// Owns the conversation with the AI: the rolling memory, the in-flight
 // request, and the rules that decide which game events deserve a reply.
 // One instance lives for the whole game session; memory resets per level.
 class AIClient {
@@ -50,6 +53,12 @@ public:
     std::string getName() const;
     // Why the last chat message got no reply, or empty
     std::string const& getLastChatError() const;
+    // What the current AI connection still needs ("an API key"...), or empty
+    std::string missingSetup() const;
+    // The player changed provider, key or model
+    void connectionChanged();
+    // Random, anonymous ID a creator proxy uses to rate-limit per player
+    std::string const& getPlayerID();
 
     // Called whenever memory or the waiting state changes (used by the chat popup)
     void setUpdateCallback(std::function<void()> callback);
@@ -71,15 +80,20 @@ private:
     bool canSendEvent(Priority priority);
     void sendEvent(std::string text, std::string display);
     void send(std::string text, std::string display, bool isChat);
-    void onResponse(geode::utils::web::WebResponse const& response, Turn userTurn, bool isChat);
+    void onResponse(
+        Connection const& connection, geode::utils::web::WebResponse const& response,
+        size_t maxChars, Turn userTurn, bool isChat
+    );
+    // Counts one message against the daily limit; false when the limit is used up
+    bool takeDailyMessage();
     void remember(Turn userTurn, std::string reply);
     void notifyUpdate();
-    std::string const& getPlayerID();
     std::string statusLine() const;
 
     geode::async::TaskHolder<geode::utils::web::WebResponse> m_request;
     bool m_requestIsChat = false;
     std::string m_lastChatError;
+    bool m_warnedAboutSetup = false;
     std::deque<Turn> m_memory;
     LevelInfo m_level;
     bool m_active = false;

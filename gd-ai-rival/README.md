@@ -1,93 +1,29 @@
 # AI Rival: talk to an AI while you play Geometry Dash
 
-A Geode mod for Geometry Dash 2.2081 (Windows and Android) that adds an AI rival to your levels. You can chat with it, and it reacts on its own to your deaths, new bests and completions. Replies show up in a speech bubble that fades out after a few seconds.
+A Geode mod for Geometry Dash 2.2091 (Windows and Android) that puts an AI in your levels. You can chat with it, and it reacts on its own to your deaths, new bests and completions. Replies show up in a speech bubble that fades out after a few seconds.
+
+Each player connects their **own AI**: Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, or any OpenAI-compatible API. Several of these are free. Level creators can instead run a **proxy** that pays for the AI, so their players don't need a key.
 
 ```
-GD + mod  --HTTPS-->  your proxy (Cloudflare Worker)  --API key-->  Claude API
+Own key:        GD + mod  --HTTPS + player's key-->  Claude / OpenAI / Gemini / ...
+Creator proxy:  GD + mod  --HTTPS-->  Cloudflare Worker (holds the creator's key)  -->  Claude
 ```
-
-The mod only ever talks to **your proxy**. The Anthropic API key lives in the proxy as a Cloudflare secret, never in the mod.
 
 | Folder | What it is |
 |---|---|
-| `mod/` | Geode mod (C++23, Geode SDK v5.11) |
-| `proxy/` | Cloudflare Worker that holds the key, rate-limits and forwards to Claude |
+| `mod/` | Geode mod (C++23, Geode SDK v6) |
+| `proxy/` | Optional Cloudflare Worker for creators who pay for the AI themselves |
 | `../.github/workflows/build-ai-rival-mod.yml` | GitHub Actions build for Windows + Android |
 
 ---
 
-## 1. Deploy the proxy
-
-You need Node.js 18+, a free [Cloudflare account](https://dash.cloudflare.com/sign-up) and an API key from the [Claude Console](https://platform.claude.com/).
-
-```sh
-cd gd-ai-rival/proxy
-npm install
-npx wrangler login                         # opens the browser once
-npx wrangler secret put ANTHROPIC_API_KEY  # paste your key when asked (CLAUDE_API_KEY works too)
-npx wrangler deploy
-```
-
-`deploy` prints your URL, e.g. `https://gd-ai-rival.<you>.workers.dev`. The endpoint the mod needs is that URL **plus `/chat`**. Quick test:
-
-```sh
-curl -X POST https://gd-ai-rival.<you>.workers.dev/chat \
-  -H "Content-Type: application/json" \
-  -d '{"player_id":"testplayer123","level_id":0,"message":"[PLAYER] hi (attempt 1, best 0%)"}'
-# {"reply":"..."}
-```
-
-### Proxy settings
-
-Edit `vars` in `proxy/wrangler.jsonc`, then run `npx wrangler deploy` again.
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `MODEL` | `claude-opus-5-5` | Claude model. `claude-haiku-5-5` is much cheaper (see costs). |
-| `ALLOWED_LEVEL_IDS` | empty | Comma-separated level IDs the proxy answers for. Empty = all. **This is the real level lock** for a public mod, because the in-game setting can be changed by players. |
-| `ALLOW_CUSTOM_PERSONA` | `true` | `false` ignores the player's Personality setting and always uses `DEFAULT_PERSONA`. |
-| `DEFAULT_PERSONA` | the rival | Character used when custom personas are off or empty. |
-| `PLAYER_PER_MINUTE` | `8` | Max requests per player per minute. |
-| `IP_PER_MINUTE` | `20` | Max requests per IP per minute (catches players faking new IDs). |
-| `PLAYER_PER_DAY` | `200` | Max requests per player per UTC day. |
-| `GLOBAL_PER_DAY` | `1000` | Max requests in total per UTC day. This is your spending cap. |
-
-Limits are counted by one Durable Object, which works on Cloudflare's free plan. Players who hit a limit see a short in-game message such as "Slow down!".
-
-The proxy also enforces its own rules no matter what persona is sent: 1-2 sentences, plain ASCII (GD's fonts can't draw anything else), playful rather than hateful, and replies trimmed to 220 characters. If the model declines a message, the API retries on Anthropic's recommended fallback model (`fallbacks: "default"`). If that also declines, the bubble shows a neutral in-character line.
-
-### Costs (rough)
-
-Each allowed request is one model call, with about 600-1,000 input tokens and 100-300 output tokens (thinking included).
-
-| Model | Per message | At the default 1,000/day cap |
-|---|---|---|
-| `claude-opus-5-5` ($4 / $20 per M tokens) | ~$0.005-0.01 | up to ~$10/day |
-| `claude-haiku-5-5` ($0.10 / $0.50 per M tokens) | ~$0.0002 | up to ~$0.25/day |
-
-The proxy logs real token usage for every request: `npx wrangler tail` shows it live, and the Cloudflare dashboard keeps the logs. Also set a monthly spend limit in the Claude Console as a backstop.
-
-### Why there's no secret token in the mod
-
-Anything compiled into a public mod can be pulled out of it, so a shared secret would only look like protection. What actually bounds abuse: input size limits, the fixed system rules, short replies, the per-player, per-IP and daily limits, and (optionally) `ALLOWED_LEVEL_IDS`.
-
-### Local development
-
-```sh
-cp .dev.vars.example .dev.vars   # put your key in it
-npm run dev                      # http://localhost:8787/chat
-npm run typecheck
-```
-
----
-
-## 2. Build the mod
+## 1. Build the mod
 
 ### Option A: GitHub Actions (easiest, no local toolchain)
 
-Pushing changes under `gd-ai-rival/mod/` runs `.github/workflows/build-ai-rival-mod.yml`, which builds the mod with Geode's official action. Download the **AI Rival mod** artifact from the workflow run: it contains one `marun1105.ai-rival.geode` covering every platform that was built. You can also start it by hand from the Actions tab ("Run workflow").
+Pushing changes under `gd-ai-rival/mod/` runs `.github/workflows/build-ai-rival-mod.yml`, which builds the mod with Geode's official action. Download the **AI Rival mod** artifact from the workflow run: it contains one `marun1105.ai-rival.geode` covering every platform that was built. To rebuild without a code change, open a run in the Actions tab and press **Re-run all jobs**.
 
-> **Windows build and the repo name.** GitHub's Windows runners check out into `D:\a\<repo>\<repo>`, and Windows can't create a folder whose name ends in a dot. While the repository is called `my-project.`, the workflow therefore builds only **Android32 + Android64** and skips Windows. Rename the repo (GitHub → Settings → Repository name, e.g. `my-project`; old links redirect) and the Windows build switches on by itself, with no workflow change needed. Until then, build the Windows version locally (Option B).
+> **Windows build and the repo name.** GitHub's Windows runners check out into `D:\a\<repo>\<repo>`, and Windows can't create a folder whose name ends in a dot. While the repository is called `my-project.`, the workflow builds only **Android32 + Android64** and skips Windows. Rename the repo (GitHub → Settings → Repository name, e.g. `my-project`; old links redirect) and the Windows build switches on by itself.
 
 ### Option B: build locally
 
@@ -98,58 +34,122 @@ Pushing changes under `gd-ai-rival/mod/` runs `.github/workflows/build-ai-rival-
    ```
 2. Install a compiler:
    - **Windows:** Visual Studio 2022 with "Desktop development with C++" (the mod uses C++23), plus CMake 3.21+.
-   - **Android:** the Android NDK (r27 or newer) with `ANDROID_NDK_ROOT` set, or passed with `geode build --ndk <path>`. You can build for Android from Windows, macOS or Linux.
+   - **Android:** the Android NDK (r27 or newer) with `ANDROID_NDK_ROOT` set, or passed with `geode build --ndk <path>`.
 3. Build:
    ```sh
    cd gd-ai-rival/mod
    geode build                  # Windows
    geode build -p android64     # Android (64-bit); android32 for older phones
    ```
-   The output is `build/marun1105.ai-rival.geode`. See `geode build --help` for more options.
+   The output is `build/marun1105.ai-rival.geode`.
 
-The mod targets **GD 2.2081 with Geode v5.11.2** (`mod.json` → `"geode"`). If you install a newer Geode SDK, bump that field to match. To publish under your own name, change `id` and `developer` in `mod.json`.
+The mod targets **GD 2.2091 with Geode v6.0.0-alpha.1** (`mod.json` → `"geode"`). If you install a newer Geode SDK, bump that field to match. To publish under your own name, change `id` and `developer` in `mod.json`.
 
 ---
 
-## 3. Install
+## 2. Install
 
 `geode build` installs the mod automatically if your CLI profile points at your GD install. Otherwise copy the `.geode` file into Geode's mods folder:
 
-- **Windows (Steam):** right-click Geometry Dash, then Manage, then Browse local files. Put the file in `geode/mods/`.
+- **Windows (Steam):** right-click Geometry Dash → Manage → Browse local files, then put the file in `geode/mods/`.
 - **Android (Geode launcher):** `Android/media/com.geode.launcher/game/geode/mods/` on your phone's storage.
 
-The mod depends on **Node IDs** (`geode.node-ids`), which most Geode installs already have. If it's missing, Geode will tell you, and you can install it from the in-game mod list.
+The mod has no other mod dependencies. If **Node IDs** is installed, the pause-menu chat button joins its shared button column; otherwise it sits on its own on the right.
 
 ---
 
-## 4. Configure in game
+## 3. Connect an AI
 
-Geode menu → AI Rival → Settings:
+Open the mod's settings and press **Set Up** next to *AI Connection* (or, in a level: pause → chat button → gear).
 
-| Setting | Default | What it does |
+1. Use the arrows to pick a provider. Each one shows **FREE** or **PAID** and a short note.
+2. Press **Get Key**, create a key on the provider's site and copy it.
+3. Press **Paste**, then **Test**. A reply in green means it works.
+4. Optional: press **List** to pick another model from the provider's live model list.
+
+| Provider | Cost | Default model |
 |---|---|---|
-| Proxy URL | empty | Your Worker URL ending in **`/chat`**. Required. |
-| AI Name | Rival | Name shown on the speech bubble. |
-| Personality | rival trash-talker | Character description sent to the proxy (max 600 characters). |
-| Memory Size | 10 | Recent messages sent with each request. Resets per level. |
-| Open Chat (PC only) | `T` | Pauses the level and opens the chat. |
-| In-Game Chat Button | on for Android, off for PC | Small chat button next to the pause button. |
-| Auto Reactions | on | AI comments on deaths, new bests and completions. |
-| Greet On Level Start | on | AI says something when you enter a level. |
-| Death Comment Cooldown | 20 s | Minimum gap between comments on ordinary deaths. |
-| Death Comment Chance | 40 % | Chance to comment on an ordinary death once the cooldown is over. |
-| React In Practice Mode | off | Also react in practice mode and from start positions. |
-| Bubble Position / Duration | Top / 4 s | Where the bubble sits and how long it stays (longer replies stay longer). |
-| Only On Specific Levels + Level IDs | off | Client-side level lock. Unpublished editor levels have ID `0`. |
+| Claude (Anthropic) | Paid, ~$0.003/message | `claude-sonnet-5-5` |
+| ChatGPT (OpenAI) | Paid | `gpt-5.6` |
+| Gemini (Google) | **Free tier** (rate limited) | `gemini-flash-latest` |
+| Grok (xAI) | Paid (trial credits sometimes) | `grok-4.5` |
+| Groq | **Free tier**, no card | `llama-3.3-70b-versatile` |
+| OpenRouter | **Free models** available | `openrouter/free` |
+| Ollama (your PC) | **Free**, offline, PC only | `llama3.2` |
+| Custom (OpenAI-compatible) | Depends | you enter it |
+| Creator proxy | Free for players | set by the proxy |
+
+The step-by-step guide for every provider is in [`mod/about.md`](mod/about.md), which is also the mod's page in-game. Model names change often, which is why **List** exists: if a default stops working, pick a current model from the list.
+
+Keys are saved per provider in the mod's save data on the device, shown masked on screen, never logged, and only sent to the provider they belong to.
+
+---
+
+## 4. Settings
+
+Everything is in Geode → AI Rival → Settings, grouped into sections:
+
+| Section | What you can change |
+|---|---|
+| Connection | AI Connection screen, Daily Message Limit (default 200, `0` = none) |
+| Character | Name, Personality (Rival, Coach, Chill, Sarcastic, Custom), custom personality text, Reply Length (Very Short / Short / Medium), Memory Size |
+| Controls | Open Chat keybind (PC, default `T`), In-Game Chat Button (on for phones) |
+| Game Reactions | Master switch, each reaction on or off (start, deaths, close calls, new bests, completion), close call range, death cooldown and chance, practice mode, and a custom direction for each moment ("give me a tip instead of roasting me") |
+| Speech Bubble | Position (6 spots) and nudge, width, font (Chat / Big / Gold), text size, background color + transparency, text and name colors, how long it stays, letter-by-letter text |
+| Avatar | GD cube in the bubble: any icon number and two palette colors, your own icon, or none |
+| Chat Window | Classic GD theme or a custom color, Normal or Large size |
+| Sound | Talking blips while text appears (Blip / Chirp / Soft / Off) and their volume |
+| Levels | Let levels customize the AI, and the optional level lock |
+
+### For level creators
+
+A level can give the AI its own name, personality, look, sound and reactions with hidden **text objects** whose text starts with `ai:`, for example `ai: name = Rocky | avatar = 35 | sound = chirp` or `ai: on-death = mock the ship part`. The full list of keys is in [`mod/about.md`](mod/about.md#for-level-creators-give-your-level-its-own-ai) (also shown on the mod's page in-game). A level can't change a player's AI connection, key, daily limit or cooldowns, and players can turn level customization off.
 
 ### How reactions are rate-limited
 
 - At most one request is in flight at a time. A death comment never interrupts a chat reply.
-- **Ordinary deaths:** only after the cooldown, and then only with the configured chance. Deaths that got skipped are summarized in the next comment ("other deaths since your last comment: 12%, 34%...").
+- **Ordinary deaths:** only after the cooldown, and then only with the configured chance. Skipped deaths are summarized in the next comment ("other deaths since your last comment: 12%, 34%...").
 - **Close calls** (within 3% of your best, once your best is at least 30%): half the cooldown, no dice roll.
-- **New bests:** always commented on, with a small minimum gap so a burst of tiny bests on a fresh level doesn't spam.
+- **New bests:** always commented on (if on), at most one every 8 seconds.
 - **Level start and completion:** always.
-- The proxy's per-player limit applies on top of all of this.
+- The **Daily Message Limit** caps everything, chat included.
+
+Every reply follows fixed rules whichever AI is used: the chosen reply length, plain ASCII (GD's fonts can't draw anything else), playful rather than hateful. Replies are cleaned up and trimmed (120 / 220 / 320 characters for Very Short / Short / Medium) before they're shown.
+
+---
+
+## 5. Optional: run a creator proxy
+
+If you want players of **your** level to use the AI without their own key, deploy the Cloudflare Worker in `proxy/` with your key. Players pick **Creator proxy** in AI Connection and paste your URL. You pay for their messages, so the proxy enforces per-player, per-IP and daily limits.
+
+You need Node.js 18+, a free [Cloudflare account](https://dash.cloudflare.com/sign-up) and a key from the [Claude Console](https://console.anthropic.com/).
+
+```sh
+cd gd-ai-rival/proxy
+npm install
+npx wrangler login                         # opens the browser once
+npx wrangler secret put ANTHROPIC_API_KEY  # paste your key when asked (CLAUDE_API_KEY works too)
+npx wrangler deploy
+```
+
+Your URL is printed by `deploy`; players need it **plus `/chat`**, e.g. `https://gd-ai-rival.<you>.workers.dev/chat`.
+
+Edit `vars` in `proxy/wrangler.jsonc`, then deploy again:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MODEL` | `claude-opus-5-5` | Claude model. `claude-haiku-5-5` is much cheaper. |
+| `ALLOWED_LEVEL_IDS` | empty | Level IDs the proxy answers for. Empty = all. Set this to your level so strangers can't use your proxy on other levels. |
+| `ALLOW_CUSTOM_PERSONA` | `true` | `false` ignores the player's personality and always uses `DEFAULT_PERSONA`. |
+| `DEFAULT_PERSONA` | the rival | Character used when custom personas are off or empty. |
+| `PLAYER_PER_MINUTE` | `8` | Max requests per player per minute. |
+| `IP_PER_MINUTE` | `20` | Max requests per IP per minute. |
+| `PLAYER_PER_DAY` | `200` | Max requests per player per UTC day. |
+| `GLOBAL_PER_DAY` | `1000` | Max requests in total per UTC day (your spending cap). |
+
+Rough proxy costs: `claude-opus-5-5` ~$0.005-0.01 per message (up to ~$10/day at the 1,000 cap); `claude-haiku-5-5` ~$0.0002 per message. `npx wrangler tail` shows live token usage. Also set a monthly spend limit in the Claude Console.
+
+Local development: `cp .dev.vars.example .dev.vars`, add your key, then `npm run dev` (serves `http://localhost:8787/chat`) and `npm run typecheck`.
 
 ---
 
@@ -157,11 +157,13 @@ Geode menu → AI Rival → Settings:
 
 | You see | Fix |
 |---|---|
-| "No proxy URL set" | Fill in Proxy URL in the mod settings. |
-| "Couldn't reach the AI (HTTP 404)" | The URL is missing `/chat`. |
-| "The AI proxy is misconfigured." | The API key secret is missing or invalid. Run `npx wrangler secret put ANTHROPIC_API_KEY`, then check `npx wrangler tail`. |
-| "The AI isn't available on this level." | The level isn't in the proxy's `ALLOWED_LEVEL_IDS`. |
+| "isn't connected to an AI yet" | Open AI Connection (gear in the chat) and add a key. |
+| "... rejected the API key" | The key is wrong or was deleted. Create a new one and paste it again. |
+| "... doesn't know the model ..." | Press **List** in AI Connection and pick a current model. |
+| "too many requests, or you're out of credits" | Free tiers have per-minute limits; wait a bit. On paid providers, add credit. |
+| "Couldn't reach Ollama" | Start Ollama on your PC and run `ollama pull llama3.2` once. |
+| "Daily message limit reached" | Raise Daily Message Limit in the settings, or wait until tomorrow. |
+| "Proxy not found" | The creator proxy URL must end in `/chat`. |
 | No reactions on deaths | Auto Reactions is off, you're in practice mode, the cooldown or chance skipped it, or the level lock excludes the level. |
-| Replies never arrive | Open the Geode log console (Geode settings) and look for `Proxy request failed`. |
 
 Notes: replies are English-only by design, since GD's built-in fonts can't draw non-ASCII text. Memory is per level and resets when you leave it.

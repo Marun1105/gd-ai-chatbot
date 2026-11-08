@@ -1,28 +1,44 @@
 {
-	"geode": "5.11.2",
+	"geode": "6.0.0-alpha.1",
 	"gd": {
-		"win": "2.2081",
-		"android": "2.2081"
+		"win": "2.2091",
+		"android": "2.2091"
 	},
 	"id": "marun1105.ai-rival",
 	"name": "AI Rival",
 	"version": "v1.0.0",
 	"developer": "marun1105",
-	"description": "Chat with an AI rival while you play, and let it react to your deaths, new bests and completions.",
-	"tags": ["gameplay", "online", "interface"],
-	"dependencies": {
-		"geode.node-ids": ">=v1.23.3"
+	"description": "Chat with an AI rival while you play. Works with Claude, ChatGPT, Gemini, Grok, Groq and more using your own API key (free options included).",
+	"tags": [
+		"gameplay",
+		"online",
+		"interface"
+	],
+	"resources": {
+		"files": [
+			"resources/sounds/*.wav"
+		]
 	},
 	"settings": {
 		"connection-title": {
 			"type": "title",
 			"name": "Connection"
 		},
-		"proxy-url": {
-			"type": "string",
-			"name": "Proxy URL",
-			"description": "The <cy>/chat</c> endpoint of your AI proxy, for example <cg>https://gd-ai-rival.yourname.workers.dev/chat</c>. The mod never talks to the AI provider directly.",
-			"default": ""
+		"connection": {
+			"type": "button",
+			"name": "AI Connection",
+			"description": "Pick which AI to use and add your API key.\n\n<cg>Free:</c> Gemini (Google), Groq, OpenRouter's free models, or Ollama on your own PC.\n<co>Paid:</c> Claude, ChatGPT, Grok.\n\nThe mod page (the <cy>i</c> button) has a step-by-step guide for getting a key from each one. Your key stays on this device and is only sent to the AI you pick.",
+			"buttons": {
+				"open": "Set Up"
+			}
+		},
+		"daily-limit": {
+			"type": "int",
+			"name": "Daily Message Limit",
+			"description": "Most messages this device sends to the AI per day, so a long session can't run up your bill. <cy>0</c> means no limit.",
+			"default": 200,
+			"min": 0,
+			"max": 5000
 		},
 		"character-title": {
 			"type": "title",
@@ -35,11 +51,35 @@
 			"default": "Rival",
 			"filter": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-."
 		},
-		"personality": {
+		"personality-preset": {
 			"type": "string",
 			"name": "Personality",
-			"description": "How the AI should behave, up to 600 characters. This is sent to the proxy as the character description. The proxy always adds its own rules on top (short replies, plain text, no hateful content), and the proxy owner can choose to ignore this setting.",
-			"default": "You are Rival, a cocky Geometry Dash player who thinks they are better than the player. Trash-talk silly deaths with playful roasts, act annoyed when they make progress, and give grudging respect when they get a new best or beat the level. Keep it playful, never hateful."
+			"description": "<cy>Rival</c>: cocky trash talk. <cy>Coach</c>: hype and tips. <cy>Chill</c>: laid-back friend. <cy>Sarcastic</c>: deadpan narrator. <cy>Custom</c>: write your own below.",
+			"default": "Rival",
+			"one-of": [
+				"Rival",
+				"Coach",
+				"Chill",
+				"Sarcastic",
+				"Custom"
+			]
+		},
+		"custom-personality": {
+			"type": "string",
+			"name": "Custom Personality",
+			"description": "Used when Personality is <cy>Custom</c>. Describe who the AI is and how it talks, up to 600 characters. Short replies and no hateful content are always enforced on top.",
+			"default": ""
+		},
+		"reply-length": {
+			"type": "string",
+			"name": "Reply Length",
+			"description": "How long the AI's replies are. <cy>Very Short</c>: one quick line. <cy>Short</c>: one or two sentences. <cy>Medium</c>: two or three.",
+			"default": "Short",
+			"one-of": [
+				"Very Short",
+				"Short",
+				"Medium"
+			]
 		},
 		"memory-size": {
 			"type": "int",
@@ -59,7 +99,9 @@
 			"description": "Pauses the level and opens the chat box.",
 			"default": "T",
 			"category": "gameplay",
-			"platforms": ["desktop"]
+			"platforms": [
+				"desktop"
+			]
 		},
 		"show-ingame-button": {
 			"type": "bool",
@@ -82,11 +124,48 @@
 			"description": "Let the AI comment on its own when you die, get a new best or beat the level.",
 			"default": true
 		},
-		"greet-on-start": {
+		"react-start": {
 			"type": "bool",
-			"name": "Greet On Level Start",
-			"description": "The AI says something when you enter a level.",
+			"name": "On Level Start",
+			"description": "Say something when you enter a level.",
 			"default": true,
+			"enable-if": "auto-reactions"
+		},
+		"react-deaths": {
+			"type": "bool",
+			"name": "On Deaths",
+			"description": "Comment on ordinary deaths (with the cooldown and chance below).",
+			"default": true,
+			"enable-if": "auto-reactions"
+		},
+		"react-close-calls": {
+			"type": "bool",
+			"name": "On Close Calls",
+			"description": "Always comment when you die close to your best.",
+			"default": true,
+			"enable-if": "auto-reactions"
+		},
+		"react-new-best": {
+			"type": "bool",
+			"name": "On New Bests",
+			"description": "Comment when you set a new best.",
+			"default": true,
+			"enable-if": "auto-reactions"
+		},
+		"react-complete": {
+			"type": "bool",
+			"name": "On Completion",
+			"description": "Comment when you beat the level.",
+			"default": true,
+			"enable-if": "auto-reactions"
+		},
+		"close-call-range": {
+			"type": "int",
+			"name": "Close Call Range",
+			"description": "A death within this many percent of your best counts as a close call (once your best is at least 30%).",
+			"default": 3,
+			"min": 1,
+			"max": 20,
 			"enable-if": "auto-reactions"
 		},
 		"event-cooldown": {
@@ -118,20 +197,137 @@
 			"default": false,
 			"enable-if": "auto-reactions"
 		},
+		"note-start": {
+			"type": "string",
+			"name": "Level Start Direction",
+			"description": "Extra direction for the AI at this moment, up to 200 characters, for example <cg>Warn me about the wave part.</c>. A level can set its own.",
+			"default": "",
+			"enable-if": "auto-reactions"
+		},
+		"note-death": {
+			"type": "string",
+			"name": "Death Direction",
+			"description": "Extra direction for the AI at this moment, up to 200 characters, for example <cg>Give me a tip instead of roasting me.</c>. A level can set its own.",
+			"default": "",
+			"enable-if": "auto-reactions"
+		},
+		"note-new-best": {
+			"type": "string",
+			"name": "New Best Direction",
+			"description": "Extra direction for the AI at this moment, up to 200 characters, for example <cg>Act shocked.</c>. A level can set its own.",
+			"default": "",
+			"enable-if": "auto-reactions"
+		},
+		"note-complete": {
+			"type": "string",
+			"name": "Completion Direction",
+			"description": "Extra direction for the AI at this moment, up to 200 characters, for example <cg>Challenge me to do it again faster.</c>. A level can set its own.",
+			"default": "",
+			"enable-if": "auto-reactions"
+		},
 		"bubble-title": {
 			"type": "title",
 			"name": "Speech Bubble"
 		},
 		"bubble-position": {
 			"type": "string",
-			"name": "Bubble Position",
-			"description": "Where the AI's replies appear on screen.",
+			"name": "Position",
+			"description": "Where replies appear on screen.",
 			"default": "Top",
-			"one-of": ["Top", "Bottom"]
+			"one-of": [
+				"Top",
+				"Bottom",
+				"Top Left",
+				"Top Right",
+				"Bottom Left",
+				"Bottom Right"
+			]
+		},
+		"bubble-offset-x": {
+			"type": "int",
+			"name": "Nudge Sideways",
+			"description": "Move the bubble left (negative) or right (positive).",
+			"default": 0,
+			"min": -200,
+			"max": 200
+		},
+		"bubble-offset-y": {
+			"type": "int",
+			"name": "Nudge Up/Down",
+			"description": "Move the bubble down (negative) or up (positive).",
+			"default": 0,
+			"min": -200,
+			"max": 200
+		},
+		"bubble-width": {
+			"type": "int",
+			"name": "Width",
+			"description": "Bubble width. Text wraps to fit.",
+			"default": 360,
+			"min": 150,
+			"max": 500,
+			"control": {
+				"slider": true,
+				"slider-step": 10
+			}
+		},
+		"bubble-font": {
+			"type": "string",
+			"name": "Font",
+			"description": "<cy>Chat</c>: clean and readable. <cy>Big</c>: GD's bold font. <cy>Gold</c>: GD's yellow title font.",
+			"default": "Chat",
+			"one-of": [
+				"Chat",
+				"Big",
+				"Gold"
+			]
+		},
+		"bubble-text-size": {
+			"type": "float",
+			"name": "Text Size",
+			"description": "Size of the reply text. Big and Gold fonts look best around 0.4.",
+			"default": 0.7,
+			"min": 0.3,
+			"max": 1.5,
+			"control": {
+				"slider": true,
+				"slider-step": 0.05
+			}
+		},
+		"bubble-color": {
+			"type": "rgba",
+			"name": "Background",
+			"description": "Bubble color and transparency.",
+			"default": [
+				0,
+				0,
+				0,
+				170
+			]
+		},
+		"bubble-text-color": {
+			"type": "rgb",
+			"name": "Text Color",
+			"description": "Color of the reply text.",
+			"default": [
+				255,
+				255,
+				255
+			]
+		},
+		"bubble-name-color": {
+			"type": "rgb",
+			"name": "Name Color",
+			"description": "Tint for the AI's name. White keeps the gold font as it is. Also colors the AI's lines in the chat history.",
+			"default": [
+				255,
+				255,
+				255
+			]
 		},
 		"bubble-duration": {
 			"type": "float",
-			"name": "Bubble Duration",
+			"name": "Stay On Screen",
 			"description": "Base number of seconds a reply stays on screen. Longer replies stay a little longer.",
 			"default": 4.0,
 			"min": 2.0,
@@ -141,9 +337,122 @@
 				"slider-step": 0.5
 			}
 		},
-		"level-lock-title": {
+		"typewriter": {
+			"type": "bool",
+			"name": "Letter By Letter",
+			"description": "Replies appear letter by letter, with the talking sound.",
+			"default": true
+		},
+		"avatar-title": {
 			"type": "title",
-			"name": "Level Lock"
+			"name": "Avatar"
+		},
+		"avatar": {
+			"type": "string",
+			"name": "Avatar",
+			"description": "Icon shown in the bubble. <cy>AI Icon</c>: the cube set below. <cy>My Icon</c>: your own cube and colors, like a mirror rival. <cy>None</c>: no icon.",
+			"default": "AI Icon",
+			"one-of": [
+				"AI Icon",
+				"My Icon",
+				"None"
+			]
+		},
+		"avatar-icon": {
+			"type": "int",
+			"name": "Cube Icon",
+			"description": "Cube icon number, as in the icon kit (1 is the default cube).",
+			"default": 1,
+			"min": 1,
+			"max": 500
+		},
+		"avatar-color-1": {
+			"type": "int",
+			"name": "Main Color",
+			"description": "Main color number from GD's color palette (0-106).",
+			"default": 11,
+			"min": 0,
+			"max": 106
+		},
+		"avatar-color-2": {
+			"type": "int",
+			"name": "Secondary Color",
+			"description": "Secondary color number from GD's color palette (0-106).",
+			"default": 3,
+			"min": 0,
+			"max": 106
+		},
+		"chat-title": {
+			"type": "title",
+			"name": "Chat Window"
+		},
+		"chat-theme": {
+			"type": "string",
+			"name": "Theme",
+			"description": "<cy>Classic</c>: GD's brown popup. <cy>Custom Color</c>: a plain panel in the color below.",
+			"default": "Classic",
+			"one-of": [
+				"Classic",
+				"Custom Color"
+			]
+		},
+		"chat-color": {
+			"type": "rgb",
+			"name": "Custom Color",
+			"description": "Chat window color when Theme is Custom Color.",
+			"default": [
+				40,
+				40,
+				90
+			]
+		},
+		"chat-size": {
+			"type": "string",
+			"name": "Size",
+			"description": "<cy>Large</c> shows more of the conversation.",
+			"default": "Normal",
+			"one-of": [
+				"Normal",
+				"Large"
+			]
+		},
+		"sound-title": {
+			"type": "title",
+			"name": "Sound"
+		},
+		"talk-sound": {
+			"type": "string",
+			"name": "Talking Sound",
+			"description": "Voice blips while a reply appears. <cy>Blip</c>: classic RPG. <cy>Chirp</c>: bright. <cy>Soft</c>: calm.",
+			"default": "Blip",
+			"one-of": [
+				"Blip",
+				"Chirp",
+				"Soft",
+				"Off"
+			]
+		},
+		"talk-volume": {
+			"type": "int",
+			"name": "Talking Volume",
+			"description": "Loudness of the talking sound, on top of GD's sound effects volume.",
+			"default": 60,
+			"min": 0,
+			"max": 100,
+			"control": {
+				"slider": true,
+				"slider-step": 5
+			}
+		},
+		"levels-title": {
+			"type": "title",
+			"name": "Levels"
+		},
+		"allow-level-config": {
+			"type": "bool",
+			"name": "Let Levels Customize The AI",
+			"description": "Some levels set their own AI name, personality, look and reactions (see the mod page for how creators do this). Turn off to always use your own settings. Your AI connection, key and limits are never changed by a level.",
+			"default": true
 		},
 		"level-lock": {
 			"type": "bool",

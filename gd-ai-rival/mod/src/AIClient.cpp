@@ -1,35 +1,29 @@
 #include "AIClient.hpp"
+#include "Prompt.hpp"
 #include "SpeechBubble.hpp"
+#include "Text.hpp"
 
 #include <fmt/ranges.h>
 
 using namespace geode::prelude;
 
-namespace {
-    // GD's bitmap fonts only have printable ASCII, so anything else would
-    // render as garbage. The proxy already maps smart quotes etc. to ASCII.
-    std::string toDisplayable(std::string_view text) {
-        std::string out;
-        out.reserve(text.size());
-        for (char ch : text) {
-            auto c = static_cast<unsigned char>(ch);
-            if (c == '\n' || c == '\r' || c == '\t') {
-                if (!out.empty() && out.back() != ' ') out += ' ';
-            }
-            else if (c >= 0x20 && c < 0x7f) {
-                out += ch;
-            }
-        }
-        while (!out.empty() && out.back() == ' ') out.pop_back();
-        return out;
-    }
+using text::toDisplayable;
 
+namespace {
     bool setting(std::string_view key) {
         return Mod::get()->getSettingValue<bool>(key);
     }
 
     int64_t intSetting(std::string_view key) {
         return Mod::get()->getSettingValue<int64_t>(key);
+    }
+
+    // A creator's or player's direction for how to react, after the event report
+    std::string withNote(std::string text, std::string const& note) {
+        if (!note.empty()) {
+            text += fmt::format(" Direction for this moment: {}", note);
+        }
+        return text;
     }
 }
 
@@ -51,6 +45,7 @@ void AIClient::startLevel(LevelInfo info) {
     m_memory.clear();
     m_unreportedDeaths.clear();
     m_lastSent = {};
+    profile::resetLevel();
     this->notifyUpdate();
 }
 
@@ -82,8 +77,7 @@ std::string const& AIClient::getLastChatError() const {
 }
 
 std::string AIClient::getName() const {
-    auto name = toDisplayable(Mod::get()->getSettingValue<std::string>("ai-name"));
-    return name.empty() ? "Rival" : name;
+    return profile::current().name;
 }
 
 void AIClient::setUpdateCallback(std::function<void()> callback) {
@@ -114,7 +108,24 @@ void AIClient::sendChat(std::string const& message) {
 }
 
 void AIClient::onLevelStart() {
-    if (!m_active || !setting("auto-reactions") || !setting("greet-on-start")) return;
+    if (!m_active) return;
+
+    // First level of the session without a working setup: say how to fix it, once.
+    // Next frame, because the level isn't in its scene yet while it initialises.
+    if (!m_warnedAboutSetup && !providers::loadCurrent().missing().empty()) {
+        m_warnedAboutSetup = true;
+        geode::queueInMainThread([] {
+            SpeechBubble::show(
+                profile::current(),
+                "I'm not connected yet! Pause and tap the chat button, then the gear, to pick an AI and add your key.",
+                true
+            );
+        });
+        return;
+    }
+
+    auto rules = profile::current().events;
+    if (!setting("auto-reactions") || !rules.start) return;
     if (!this->canSendEvent(Priority::Always)) return;
 
     std::string text;
@@ -136,7 +147,7 @@ void AIClient::onLevelStart() {
             m_level.name, m_level.bestPercent, m_level.totalAttempts
         );
     }
-    this->sendEvent(std::move(text), "* Entered the level");
+    this->sendEvent(withNote(std::move(text), rules.onStart), "* Entered the level");
 }
 
 void AIClient::onDeath(int percent, int attempt, bool practice) {
@@ -148,8 +159,10 @@ void AIClient::onDeath(int percent, int attempt, bool practice) {
     if (newBest) m_level.bestPercent = percent;
 
     if (!setting("auto-reactions") || (practice && !setting("react-in-practice"))) return;
+    auto rules = profile::current().events;
 
-    if (newBest) {
+    // With new-best comments off, a new best is just another (close) death
+    if (newBest && rules.newBest) {
         if (!this->canSendEvent(Priority::Important)) {
             m_unreportedDeaths.push_back(percent);
             return;
@@ -157,12 +170,13 @@ void AIClient::onDeath(int percent, int attempt, bool practice) {
         auto text = oldBest == 0
             ? fmt::format("[GAME EVENT] NEW BEST: the player died at {}% on attempt {}, their first progress on this level.", percent, attempt)
             : fmt::format("[GAME EVENT] NEW BEST: the player died at {}% on attempt {}, beating their old best of {}%.", percent, attempt, oldBest);
-        this->sendEvent(std::move(text), fmt::format("* New best: {}%", percent));
+        this->sendEvent(withNote(std::move(text), rules.onNewBest), fmt::format("* New best: {}%", percent));
         return;
     }
 
-    bool closeCall = !practice && !m_level.platformer &&
-        m_level.bestPercent >= 30 && percent >= m_level.bestPercent - 3;
+    bool closeCall = rules.closeCall && !practice && !m_level.platformer &&
+        m_level.bestPercent >= 30 && percent >= m_level.bestPercent - rules.closeCallRange;
+    if (!closeCall && !rules.death) return;
 
     if (!this->canSendEvent(closeCall ? Priority::CloseCall : Priority::Normal)) {
         m_unreportedDeaths.push_back(percent);
@@ -191,7 +205,7 @@ void AIClient::onDeath(int percent, int attempt, bool practice) {
             text += fmt::format(" Other deaths since your last comment: {}%.", fmt::join(m_unreportedDeaths, "%, "));
         }
     }
-    this->sendEvent(std::move(text), fmt::format("* Died{}", where));
+    this->sendEvent(withNote(std::move(text), rules.onDeath), fmt::format("* Died{}", where));
 }
 
 void AIClient::onComplete(int attempt, bool practice) {
@@ -201,7 +215,8 @@ void AIClient::onComplete(int attempt, bool practice) {
     bool firstWin = !practice && m_level.bestPercent < 100;
     if (!practice) m_level.bestPercent = 100;
 
-    if (!setting("auto-reactions") || (practice && !setting("react-in-practice"))) return;
+    auto rules = profile::current().events;
+    if (!setting("auto-reactions") || !rules.complete || (practice && !setting("react-in-practice"))) return;
     if (!this->canSendEvent(Priority::Always)) return;
 
     std::string text;
@@ -214,7 +229,7 @@ void AIClient::onComplete(int attempt, bool practice) {
             attempt, firstWin ? "This is their first completion." : "They had already beaten it before."
         );
     }
-    this->sendEvent(std::move(text), practice ? "* Finished practice run" : "* Beat the level!");
+    this->sendEvent(withNote(std::move(text), rules.onComplete), practice ? "* Finished practice run" : "* Beat the level!");
 }
 
 bool AIClient::canSendEvent(Priority priority) {
@@ -252,36 +267,40 @@ void AIClient::send(std::string text, std::string display, bool isChat) {
         m_lastChatError.clear();
     }
 
-    auto url = std::string(utils::string::trim(Mod::get()->getSettingValue<std::string>("proxy-url")));
-    if (url.empty()) {
+    auto look = profile::current();
+    auto connection = providers::loadCurrent();
+    if (auto missing = connection.missing(); !missing.empty()) {
         if (isChat) {
-            m_lastChatError = "No proxy URL set. Add it in the AI Rival mod settings.";
-            SpeechBubble::show(this->getName(), m_lastChatError, true);
+            m_lastChatError = fmt::format("Add {} first: tap the gear in this chat.", missing);
+            SpeechBubble::show(look, m_lastChatError, true);
             this->notifyUpdate();
         }
         return;
     }
 
-    auto history = matjson::Value::array();
-    for (auto const& turn : m_memory) {
-        history.push(matjson::makeObject({
-            { "role", turn.fromAI ? "assistant" : "user" },
-            { "content", turn.text },
-        }));
+    if (!this->takeDailyMessage()) {
+        if (isChat) {
+            m_lastChatError = "Daily message limit reached. You can raise it in the mod settings.";
+            SpeechBubble::show(look, m_lastChatError, true);
+            this->notifyUpdate();
+        }
+        return;
     }
 
-    auto body = matjson::makeObject({
-        { "player_id", this->getPlayerID() },
-        { "level_id", m_level.id },
-        { "persona", Mod::get()->getSettingValue<std::string>("personality") },
-        { "history", std::move(history) },
-        { "message", text },
-    });
+    ChatPayload payload;
+    payload.persona = look.persona;
+    payload.system = prompt::system(look.persona, look.length);
+    for (auto const& turn : m_memory) {
+        payload.history.emplace_back(turn.fromAI, turn.text);
+    }
+    payload.message = text;
+    payload.playerID = this->getPlayerID();
+    payload.levelID = m_level.id;
 
     m_lastSent = std::chrono::steady_clock::now();
     m_requestIsChat = isChat;
     if (isChat) {
-        SpeechBubble::showTyping(this->getName());
+        SpeechBubble::showTyping(look);
     }
 
     Turn userTurn { false, std::move(text), std::move(display) };
@@ -289,61 +308,65 @@ void AIClient::send(std::string text, std::string display, bool isChat) {
     // Spawning cancels whatever was pending (only ever an event comment, see canSendEvent)
     m_request.spawn(
         "AI Rival request",
-        web::WebRequest()
-            .timeout(std::chrono::seconds(30))
-            .bodyJSON(body)
-            .post(std::move(url)),
-        [this, generation = m_generation, userTurn = std::move(userTurn), isChat](web::WebResponse response) mutable {
+        providers::sendChat(connection, payload),
+        [this, generation = m_generation, connection, maxChars = profile::maxReplyChars(look.length),
+            userTurn = std::move(userTurn), isChat](web::WebResponse response) mutable {
             // Player left the level (or entered another) while we were waiting
             if (generation != m_generation || !PlayLayer::get()) return;
-            this->onResponse(response, std::move(userTurn), isChat);
+            this->onResponse(connection, response, maxChars, std::move(userTurn), isChat);
         }
     );
     this->notifyUpdate();
 }
 
-void AIClient::onResponse(web::WebResponse const& response, Turn userTurn, bool isChat) {
-    auto json = response.json();
-
-    if (!response.ok()) {
-        std::string message;
-        if (json.isOk()) {
-            message = toDisplayable(json.unwrap()["message"].asString().unwrapOr(""));
-        }
-        log::warn(
-            "Proxy request failed (HTTP {}): {} {}",
-            response.code(), message, response.errorMessage()
-        );
+void AIClient::onResponse(Connection const& connection, web::WebResponse const& response, size_t maxChars, Turn userTurn, bool isChat) {
+    auto look = profile::current();
+    auto result = providers::parseChat(connection, response, maxChars);
+    if (result.isErr()) {
+        auto error = result.unwrapErr();
+        // Never log the request itself: it carries the player's API key
+        log::warn("{} request failed (HTTP {}): {}", connection.provider->name, response.code(), error);
         if (isChat) {
-            if (message.empty()) {
-                message = response.code() > 0
-                    ? fmt::format("Couldn't reach the AI (HTTP {}).", response.code())
-                    : "Couldn't reach the AI. Check the proxy URL and your connection.";
-            }
-            m_lastChatError = message;
-            SpeechBubble::show(this->getName(), message, true);
+            m_lastChatError = error;
+            SpeechBubble::show(look, error, true);
         }
         this->notifyUpdate();
         return;
     }
 
-    std::string reply;
-    if (json.isOk()) {
-        reply = toDisplayable(json.unwrap()["reply"].asString().unwrapOr(""));
-    }
-    if (reply.empty()) {
-        log::warn("Proxy returned no reply: {}", response.string().unwrapOr("<binary>"));
-        if (isChat) {
-            m_lastChatError = "The AI had nothing to say. Try again.";
-            SpeechBubble::show(this->getName(), m_lastChatError, true);
-        }
-        this->notifyUpdate();
-        return;
-    }
-
+    auto reply = result.unwrap();
     this->remember(std::move(userTurn), reply);
-    SpeechBubble::show(this->getName(), reply);
+    SpeechBubble::show(look, reply);
     this->notifyUpdate();
+}
+
+bool AIClient::takeDailyMessage() {
+    auto limit = intSetting("daily-limit");
+    if (limit <= 0) return true;
+
+    // UTC day number, so the count resets at the same moment everywhere
+    auto today = std::chrono::duration_cast<std::chrono::hours>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count() / 24;
+
+    auto mod = Mod::get();
+    if (mod->getSavedValue<int64_t>("usage-day") != today) {
+        mod->setSavedValue<int64_t>("usage-day", today);
+        mod->setSavedValue<int64_t>("usage-count", 0);
+    }
+    auto used = mod->getSavedValue<int64_t>("usage-count");
+    if (used >= limit) return false;
+    mod->setSavedValue<int64_t>("usage-count", used + 1);
+    return true;
+}
+
+void AIClient::connectionChanged() {
+    m_lastChatError.clear();
+    this->notifyUpdate();
+}
+
+std::string AIClient::missingSetup() const {
+    return providers::loadCurrent().missing();
 }
 
 void AIClient::remember(Turn userTurn, std::string reply) {
