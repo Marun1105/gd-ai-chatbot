@@ -478,6 +478,17 @@ void AvatarEditor::buildCubePage() {
     m_pageLabel->setScale(.4f);
     m_right->addChildAtPosition(m_pageLabel, Anchor::Center, ccp(0, -94));
 
+    // Jump five pages at a time: there are a lot of cubes
+    auto jumps = plainMenu({ 150.f, 20.f });
+    m_right->addChildAtPosition(jumps, Anchor::Center, ccp(0, -94));
+    for (int step : { -5, 5 }) {
+        auto label = CCLabelBMFont::create(step < 0 ? "<<" : ">>", "bigFont.fnt");
+        label->setScale(.4f);
+        auto button = CCMenuItemSpriteExtra::create(label, this, menu_selector(AvatarEditor::onPage));
+        button->setTag(step);
+        jumps->addChildAtPosition(button, step < 0 ? Anchor::Left : Anchor::Right, ccp(step < 0 ? 12 : -12, 0));
+    }
+
     this->moveCubeHighlight();
 }
 

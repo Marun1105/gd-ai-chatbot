@@ -164,6 +164,17 @@ protected:
         TextEditorPopup::create(std::move(options), this->getValue(), [self](std::string const& text) {
             self->setValue(text, nullptr);
             self->commit();
+
+            // The custom text is only used with the Custom preset; say so
+            // rather than leave the player wondering why nothing changed
+            auto key = self->getSetting()->getKey();
+            auto mod = self->getSetting()->getMod();
+            if (key == "custom-personality" && !text.empty() && mod
+                && mod->getSettingValue<std::string>("personality-preset") != "Custom") {
+                Notification::create(
+                    "Set Personality to Custom to use this text", NotificationIcon::Info, 3.f
+                )->show();
+            }
         })->show();
     }
 
