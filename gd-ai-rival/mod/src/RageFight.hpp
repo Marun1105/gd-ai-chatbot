@@ -46,6 +46,7 @@ protected:
 
     cocos2d::CCNode* m_world = nullptr;
     cocos2d::CCSprite* m_grin = nullptr;
+    cocos2d::CCSprite* m_grinFlash = nullptr;
     cocos2d::CCNode* m_effects = nullptr;
     cocos2d::CCLayerColor* m_hurtFlash = nullptr;
     cocos2d::CCDrawNode* m_screenCracks = nullptr;

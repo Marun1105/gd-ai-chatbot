@@ -1,4 +1,5 @@
 #include "RageEvent.hpp"
+#include "GrinLook.hpp"
 #include "RageFight.hpp"
 
 #include <algorithm>
@@ -60,9 +61,8 @@ namespace {
 // ---- The creature ----
 
 CCSprite* RageEvent::createFace(float size) {
-    // The rendered 3D model when it's there
-    if (auto face = CCSprite::create("grin-face.png"_spr)) {
-        face->setScale(size / face->getContentSize().width);
+    // The 3D renders (or the player's own picture); small uses get the close-up head
+    if (auto face = grin_look::sprite(size < 120.f ? grin_look::Pose::Icon : grin_look::Pose::Face, size)) {
         return face;
     }
     auto draw = CCDrawNode::create();
@@ -188,9 +188,11 @@ bool RageEvent::init(std::function<void(RageOutcome)> onDone) {
     m_shardLayer = CCNode::create();
     m_root->addChild(m_shardLayer, 3);
 
-    auto textures = CCTextureCache::sharedTextureCache();
-    m_faceTexture = textures->addImage("grin-face.png"_spr, false);
-    m_roarTexture = textures->addImage("grin-roar.png"_spr, false);
+    // Held for the whole scare, in case the picture changes meanwhile
+    m_faceTexture = grin_look::texture(grin_look::Pose::Face);
+    m_roarTexture = grin_look::texture(grin_look::Pose::Roar);
+    CC_SAFE_RETAIN(m_faceTexture);
+    CC_SAFE_RETAIN(m_roarTexture);
     m_face = createFace(m_win.height * .95f);
     m_face->setPosition(m_win / 2);
     m_face->setVisible(false);
@@ -228,6 +230,11 @@ bool RageEvent::ccTouchBegan(CCTouch* touch, CCEvent*) {
 void RageEvent::registerWithTouchDispatcher() {
     // Swallow every touch while it plays
     CCTouchDispatcher::get()->addTargetedDelegate(this, -10000, true);
+}
+
+RageEvent::~RageEvent() {
+    CC_SAFE_RELEASE(m_faceTexture);
+    CC_SAFE_RELEASE(m_roarTexture);
 }
 
 void RageEvent::onExit() {
@@ -379,15 +386,21 @@ void RageEvent::roar() {
 }
 
 void RageEvent::roarFrame(float) {
-    // Jaw working while it roars
+    // Jaw working while it roars; a single picture flushes red instead
     m_mouthOpen = !m_mouthOpen;
-    m_face->setTexture(m_mouthOpen ? m_roarTexture : m_faceTexture);
+    if (m_roarTexture != m_faceTexture) {
+        m_face->setTexture(m_mouthOpen ? m_roarTexture : m_faceTexture);
+    }
+    else {
+        m_face->setColor(m_mouthOpen ? ccColor3B { 255, 140, 130 } : ccColor3B { 255, 255, 255 });
+    }
 }
 
 void RageEvent::lunge() {
     // It throws itself at the glass, mouth wide open
     this->unschedule(schedule_selector(RageEvent::roarFrame));
     if (m_roarTexture) m_face->setTexture(m_roarTexture);
+    m_face->setColor({ 255, 255, 255 });
     float target = m_face->getScale();
     m_face->stopAllActions();
     m_face->runAction(CCEaseIn::create(CCScaleTo::create(IMPACT_AFTER, target * 3.2f), 2.f));
@@ -465,7 +478,8 @@ void RageEvent::shatter() {
     m_shakeStrength = 6.f;
 
     // It's waiting behind the glass
-    float scale = m_win.height * .75f / FACE_BASE;
+    auto faceSize = m_face->getContentSize();
+    float scale = m_win.height * .75f / std::max({ faceSize.width, faceSize.height, 1.f });
     m_face->stopAllActions();
     m_face->setPosition(m_win / 2);
     m_face->setScale(scale);

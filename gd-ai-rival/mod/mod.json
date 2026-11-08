@@ -17,8 +17,7 @@
 	"resources": {
 		"files": [
 			"resources/sounds/*.wav",
-			"resources/grin/*.png",
-			"resources/grin/*.jpg"
+			"resources/grin/*.png"
 		]
 	},
 	"settings": {
@@ -115,6 +114,21 @@
 			"type": "title",
 			"name": "Grin",
 			"description": "Only used when Personality is Grin."
+		},
+		"grin-picture": {
+			"type": "file",
+			"name": "Grin's Look",
+			"description": "Grin is a 3D creature by default. Pick any <cy>PNG or JPG</c> on your device to use your own picture instead: it becomes the face that smashes your screen, the face on the anger bar and in chat, and the enemy in the fight (tap the middle of it for extra damage). Square pictures work best. Use the reset arrow to go back to the 3D Grin.",
+			"default": "Default 3D Grin",
+			"control": {
+				"dialog": "open",
+				"filters": [
+					{
+						"files": ["*.png", "*.jpg", "*.jpeg"],
+						"description": "Pictures"
+					}
+				]
+			}
 		},
 		"rage-bar": {
 			"type": "bool",

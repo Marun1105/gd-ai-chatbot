@@ -23,8 +23,11 @@ public:
     static void play(std::function<void(RageOutcome)> onDone);
     static bool isActive();
 
-    // The creature's face, drawn once into a sprite (also used by the bar)
+    // The creature's face as a sprite about `size` points across (also used
+    // by the bar and the chat bubble)
     static cocos2d::CCSprite* createFace(float size);
+
+    ~RageEvent() override;
 
 protected:
     struct Shard {

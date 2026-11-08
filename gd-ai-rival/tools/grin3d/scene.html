@@ -312,7 +312,7 @@ window.renderArena = (w, h) => {
   g.fillRect(0, 0, w, h);
   g.fillStyle = 'rgba(0,0,0,0.08)';
   for (let y = 0; y < h; y += 3) g.fillRect(0, y, w, 1);
-  return out.toDataURL('image/jpeg', 0.86);
+  return out.toDataURL('image/png');
 };
 window.ready = true;
 </script>

@@ -1,4 +1,4 @@
-// Renders Grin and the fight arena with three.js in headless Chromium.
+// Renders the fight arena (grin-arena.png) with three.js in headless Chromium.
 // Usage: node render.js <port> <outDir>
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -18,9 +18,6 @@ const path = require('path');
     fs.writeFileSync(path.join(outDir, name), data);
     console.log(name, data.length, 'bytes');
   };
-  save('grin-full.png', await page.evaluate(() => window.renderShot('full', 640, 640)));
-  save('grin-face.png', await page.evaluate(() => window.renderShot('face', 640, 640)));
-  save('grin-roar.png', await page.evaluate(() => window.renderShot('roar', 640, 640)));
-  save('grin-arena.jpg', await page.evaluate(() => window.renderArena(1280, 720)));
+  save('grin-arena.png', await page.evaluate(() => window.renderArena(1280, 720)));
   await browser.close();
 })();

@@ -93,7 +93,7 @@ Everything is in Geode → AI Rival → Settings, grouped into sections:
 |---|---|
 | Connection | AI Connection screen, Daily Message Limit (default 200, `0` = none) |
 | Character | Name, Personality (Rival, Coach, Chill, Sarcastic, Grin, Custom), custom personality text (big editor with paste and examples, up to 1000 characters), Reply Length (Very Short / Short / Medium), Memory Size |
-| Grin | Anger bar (fills with every death, weighted by how far you got, the level's difficulty and repeat death spots; calms on new bests), Temper (Patient / Normal / Short Fuse), Screen Break (when it snaps: darkness, a roar, and your screen cracks and shatters), Fight Back (then fight it in a short mini-game inside your broken screen: tap it to shoot, knock back its charges; win and it calms down completely), Roar Volume |
+| Grin | Grin's Look (the 3D Grin, or any PNG/JPG on your device: used for the scare, the anger bar, the chat bubble and the fight), Anger bar (fills with every death, weighted by how far you got, the level's difficulty and repeat death spots; calms on new bests), Temper (Patient / Normal / Short Fuse), Screen Break (when it snaps: darkness, a roar, and your screen cracks and shatters), Fight Back (then fight it in a short mini-game inside your broken screen: tap it to shoot, knock back its charges; win and it calms down completely), Roar Volume |
 | Controls | Open Chat keybind (PC, default `T`), In-Game Chat Button (on for phones) |
 | Game Reactions | Master switch, each reaction on or off (start, deaths, close calls, new bests, completion), close call range, death cooldown and chance, practice mode, and a custom direction for each moment ("give me a tip instead of roasting me") |
 | Speech Bubble | **Bubble Designer** with a live preview: drag the bubble around a mini game screen (it snaps to the nearest of 6 spots), width, font, text size, how long it stays, letter-by-letter text, color themes or any colors with transparency, talking sound and volume, and a close-up that replays the reply with its voice |
@@ -167,3 +167,9 @@ Local development: `cp .dev.vars.example .dev.vars`, add your key, then `npm run
 | No reactions on deaths | Auto Reactions is off, you're in practice mode, the cooldown or chance skipped it, or the level lock excludes the level. |
 
 Notes: replies are English-only by design, since GD's built-in fonts can't draw non-ASCII text. Memory is per level and resets when you leave it.
+
+## Credits
+
+Grin's 3D model: "3D Horror Game Monster" by HorrorGameMaker.com, CC0, from
+https://opengameart.org/content/3d-horror-game-monster. How its pictures are
+rendered is in `tools/grin3d/README.md`.
