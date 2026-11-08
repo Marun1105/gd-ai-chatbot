@@ -14,9 +14,6 @@
 		"online",
 		"interface"
 	],
-	"dependencies": {
-		"geode.node-ids": ">=v1.23.3"
-	},
 	"resources": {
 		"files": [
 			"resources/sounds/*.wav"

@@ -54,7 +54,7 @@ The mod targets **GD 2.2091 with Geode v6.0.0-alpha.1** (`mod.json` → `"geode"
 - **Windows (Steam):** right-click Geometry Dash → Manage → Browse local files, then put the file in `geode/mods/`.
 - **Android (Geode launcher):** `Android/media/com.geode.launcher/game/geode/mods/` on your phone's storage.
 
-The mod depends on **Node IDs** (`geode.node-ids`), which most Geode installs already have. If it's missing, Geode will tell you, and you can install it from the in-game mod list.
+The mod has no other mod dependencies. If **Node IDs** is installed, the pause-menu chat button joins its shared button column; otherwise it sits on its own on the right.
 
 ---
 
