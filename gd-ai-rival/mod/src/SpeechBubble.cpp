@@ -28,6 +28,18 @@ void SpeechBubble::showTyping(Profile const& profile) {
     attach(create(profile, "...", Style::Typing));
 }
 
+SpeechBubble* SpeechBubble::createPreview(Profile const& profile, std::string const& text, bool animate) {
+    auto ret = new SpeechBubble();
+    ret->m_preview = true;
+    ret->m_animate = animate;
+    if (ret->initBubble(profile, text, Style::Reply)) {
+        ret->autorelease();
+        return ret;
+    }
+    delete ret;
+    return nullptr;
+}
+
 SpeechBubble* SpeechBubble::create(Profile const& profile, std::string const& text, Style style) {
     auto ret = new SpeechBubble();
     if (ret->initBubble(profile, text, style)) {
@@ -120,8 +132,10 @@ bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, S
     this->addChild(m_bodyLabel);
 
     this->place(look);
-    this->setScale(.9f);
-    this->runAction(CCEaseBackOut::create(CCScaleTo::create(.15f, 1.f)));
+    if (!m_preview || m_animate) {
+        this->setScale(.9f);
+        this->runAction(CCEaseBackOut::create(CCScaleTo::create(.15f, 1.f)));
+    }
 
     m_soundFile = style == Style::Reply ? profile.soundFile : "";
     m_volume = std::clamp(profile.soundVolume, 0.f, 1.f);
@@ -134,6 +148,9 @@ bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, S
         this->schedule(schedule_selector(SpeechBubble::typingStep), .3f);
         // Just past the request timeout, in case the reply never arrives
         this->startTimer(35.f);
+    }
+    else if (m_preview && !m_animate) {
+        // Designer preview while editing: the whole line at once, silently
     }
     else if (style == Style::Reply && look.typewriter) {
         // Hide every letter, then fade them in one by one; changing colours
@@ -152,26 +169,29 @@ bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, S
     return true;
 }
 
+CCPoint SpeechBubble::anchorPosition(BubbleAnchor anchor, CCSize size, CCSize screen) {
+    float left = 10.f + size.width / 2;
+    float right = screen.width - 10.f - size.width / 2;
+    float center = screen.width / 2;
+    // Top positions leave room for GD's progress bar
+    float top = screen.height - 28.f - size.height / 2;
+    float bottom = 18.f + size.height / 2;
+
+    switch (anchor) {
+        case BubbleAnchor::Bottom: return ccp(center, bottom);
+        case BubbleAnchor::TopLeft: return ccp(left, top);
+        case BubbleAnchor::TopRight: return ccp(right, top);
+        case BubbleAnchor::BottomLeft: return ccp(left, bottom);
+        case BubbleAnchor::BottomRight: return ccp(right, bottom);
+        case BubbleAnchor::Top: default: return ccp(center, top);
+    }
+}
+
 void SpeechBubble::place(BubbleStyle const& look) {
     auto winSize = CCDirector::get()->getWinSize();
     auto size = this->getContentSize();
 
-    float left = 10.f + size.width / 2;
-    float right = winSize.width - 10.f - size.width / 2;
-    float center = winSize.width / 2;
-    // Top positions leave room for GD's progress bar
-    float top = winSize.height - 28.f - size.height / 2;
-    float bottom = 18.f + size.height / 2;
-
-    CCPoint pos;
-    switch (look.anchor) {
-        case BubbleAnchor::Top: pos = ccp(center, top); break;
-        case BubbleAnchor::Bottom: pos = ccp(center, bottom); break;
-        case BubbleAnchor::TopLeft: pos = ccp(left, top); break;
-        case BubbleAnchor::TopRight: pos = ccp(right, top); break;
-        case BubbleAnchor::BottomLeft: pos = ccp(left, bottom); break;
-        case BubbleAnchor::BottomRight: pos = ccp(right, bottom); break;
-    }
+    auto pos = anchorPosition(look.anchor, size, winSize);
     pos.x += look.offsetX;
     pos.y += look.offsetY;
 
@@ -208,6 +228,8 @@ void SpeechBubble::playBlip() {
 }
 
 void SpeechBubble::startTimer(float seconds) {
+    // Previews stay until the designer replaces them
+    if (m_preview) return;
     this->runAction(CCSequence::create(
         CCDelayTime::create(seconds),
         CCCallFunc::create(this, callfunc_selector(SpeechBubble::fadeOut)),

@@ -1,5 +1,6 @@
 #include "CustomSettings.hpp"
 #include "AvatarEditor.hpp"
+#include "LookEditors.hpp"
 #include "Text.hpp"
 #include "TextEditorPopup.hpp"
 
@@ -215,6 +216,117 @@ Result<> LongTextSetting::isValid(std::string value) const {
     return Ok();
 }
 
+// ---- Look rows (bubble, chat window): a live thumbnail and "Customize" ----
+
+template <class S, class Editor>
+class LookSettingNode : public SettingValueNodeV3<S> {
+protected:
+    using Value = typename S::ValueType;
+    using Base = SettingValueNodeV3<S>;
+
+    CCNode* m_thumbnail = nullptr;
+    CCMenuItemSpriteExtra* m_editButton = nullptr;
+    float m_thumbWidth = 0.f;
+
+    bool init(std::shared_ptr<S> setting, float width) {
+        if (!Base::init(setting, width)) return false;
+
+        this->setContentSize({ width, 56.f });
+        this->getNameMenu()->updateAnchoredPosition(Anchor::TopLeft, ccp(10, -12), ccp(0, .5f));
+
+        auto sprite = ButtonSprite::create("Customize", "goldFont.fnt", "GJ_button_01.png", .8f);
+        sprite->setScale(.5f);
+        m_editButton = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(LookSettingNode::onEdit));
+        this->getButtonMenu()->addChildAtPosition(m_editButton, Anchor::Right, ccp(-30, 0));
+
+        m_thumbWidth = width - 120.f;
+        this->updateState(nullptr);
+        return true;
+    }
+
+    void updateState(CCNode* invoker) override {
+        Base::updateState(invoker);
+        if (!m_editButton) return;
+
+        if (m_thumbnail) m_thumbnail->removeFromParent();
+        m_thumbnail = this->makeThumbnail(this->getValue(), { m_thumbWidth, 30.f });
+        m_thumbnail->setAnchorPoint({ 0.f, .5f });
+        this->addChildAtPosition(m_thumbnail, Anchor::BottomLeft, ccp(14, 19));
+
+        bool enable = this->getSetting()->shouldEnable();
+        m_editButton->setEnabled(enable);
+    }
+
+    virtual CCNode* makeThumbnail(Value const& value, CCSize fit) = 0;
+
+    void onEdit(CCObject*) {
+        Ref<LookSettingNode> self = this;
+        Editor::create(this->getValue(), [self](Value const& value) {
+            self->setValue(value, nullptr);
+            // The designer has its own Save button, so don't wait for "Apply"
+            self->commit();
+        })->show();
+    }
+};
+
+class BubbleSettingNode : public LookSettingNode<BubbleSetting, BubbleDesigner> {
+protected:
+    CCNode* makeThumbnail(BubbleLook const& value, CCSize fit) override {
+        return look::bubbleThumbnail(value, fit);
+    }
+
+public:
+    static BubbleSettingNode* create(std::shared_ptr<BubbleSetting> setting, float width) {
+        auto ret = new BubbleSettingNode();
+        if (ret->init(std::move(setting), width)) {
+            ret->autorelease();
+            return ret;
+        }
+        delete ret;
+        return nullptr;
+    }
+};
+
+class ChatLookSettingNode : public LookSettingNode<ChatLookSetting, ChatLookEditor> {
+protected:
+    CCNode* makeThumbnail(ChatLook const& value, CCSize fit) override {
+        return look::chatThumbnail(value, fit);
+    }
+
+public:
+    static ChatLookSettingNode* create(std::shared_ptr<ChatLookSetting> setting, float width) {
+        auto ret = new ChatLookSettingNode();
+        if (ret->init(std::move(setting), width)) {
+            ret->autorelease();
+            return ret;
+        }
+        delete ret;
+        return nullptr;
+    }
+};
+
+Result<std::shared_ptr<SettingV3>> BubbleSetting::parse(std::string key, std::string modID, matjson::Value const& json) {
+    auto ret = std::make_shared<BubbleSetting>();
+    auto root = checkJson(json, "BubbleSetting");
+    ret->parseBaseProperties(std::move(key), std::move(modID), root);
+    return root.ok(std::static_pointer_cast<SettingV3>(ret));
+}
+
+SettingNodeV3* BubbleSetting::createNode(float width) {
+    return BubbleSettingNode::create(std::static_pointer_cast<BubbleSetting>(shared_from_this()), width);
+}
+
+Result<std::shared_ptr<SettingV3>> ChatLookSetting::parse(std::string key, std::string modID, matjson::Value const& json) {
+    auto ret = std::make_shared<ChatLookSetting>();
+    auto root = checkJson(json, "ChatLookSetting");
+    ret->parseBaseProperties(std::move(key), std::move(modID), root);
+    return root.ok(std::static_pointer_cast<SettingV3>(ret));
+}
+
+SettingNodeV3* ChatLookSetting::createNode(float width) {
+    return ChatLookSettingNode::create(std::static_pointer_cast<ChatLookSetting>(shared_from_this()), width);
+}
+
 // ---- Registration and access ----
 
 $execute {
@@ -223,6 +335,12 @@ $execute {
     }
     if (auto res = Mod::get()->registerCustomSettingType("long-text", &LongTextSetting::parse); !res) {
         log::error("Couldn't register the long text setting: {}", res.unwrapErr());
+    }
+    if (auto res = Mod::get()->registerCustomSettingType("bubble", &BubbleSetting::parse); !res) {
+        log::error("Couldn't register the bubble setting: {}", res.unwrapErr());
+    }
+    if (auto res = Mod::get()->registerCustomSettingType("chat-look", &ChatLookSetting::parse); !res) {
+        log::error("Couldn't register the chat look setting: {}", res.unwrapErr());
     }
 }
 
@@ -235,4 +353,12 @@ std::string settings::longText(std::string_view key) {
 
 AvatarLook settings::avatar() {
     return Mod::get()->getSettingValue<AvatarLook>("avatar");
+}
+
+BubbleLook settings::bubble() {
+    return Mod::get()->getSettingValue<BubbleLook>("bubble");
+}
+
+ChatLook settings::chatLook() {
+    return Mod::get()->getSettingValue<ChatLook>("chat-look");
 }

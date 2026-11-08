@@ -38,7 +38,13 @@
 			"description": "Most messages this device sends to the AI per day, so a long session can't run up your bill. <cy>0</c> means no limit.",
 			"default": 200,
 			"min": 0,
-			"max": 5000
+			"max": 5000,
+			"control": {
+				"arrows": true,
+				"arrow-step": 10,
+				"big-arrows": true,
+				"big-arrow-step": 100
+			}
 		},
 		"character-title": {
 			"type": "title",
@@ -96,7 +102,11 @@
 			"description": "How many recent messages (yours, the game's and the AI's) are sent along so the AI remembers the run. Memory resets when you enter a new level.",
 			"default": 10,
 			"min": 2,
-			"max": 20
+			"max": 20,
+			"control": {
+				"slider": true,
+				"slider-step": 1
+			}
 		},
 		"controls-title": {
 			"type": "title",
@@ -175,7 +185,11 @@
 			"default": 3,
 			"min": 1,
 			"max": 20,
-			"enable-if": "auto-reactions"
+			"enable-if": "auto-reactions",
+			"control": {
+				"slider": true,
+				"slider-step": 1
+			}
 		},
 		"event-cooldown": {
 			"type": "int",
@@ -184,7 +198,11 @@
 			"default": 20,
 			"min": 5,
 			"max": 300,
-			"enable-if": "auto-reactions"
+			"enable-if": "auto-reactions",
+			"control": {
+				"slider": true,
+				"slider-step": 5
+			}
 		},
 		"death-reaction-chance": {
 			"type": "int",
@@ -270,123 +288,38 @@
 			"type": "title",
 			"name": "Speech Bubble"
 		},
-		"bubble-position": {
-			"type": "string",
-			"name": "Position",
-			"description": "Where replies appear on screen.",
-			"default": "Top",
-			"one-of": [
-				"Top",
-				"Bottom",
-				"Top Left",
-				"Top Right",
-				"Bottom Left",
-				"Bottom Right"
-			]
-		},
-		"bubble-offset-x": {
-			"type": "int",
-			"name": "Nudge Sideways",
-			"description": "Move the bubble left (negative) or right (positive).",
-			"default": 0,
-			"min": -200,
-			"max": 200
-		},
-		"bubble-offset-y": {
-			"type": "int",
-			"name": "Nudge Up/Down",
-			"description": "Move the bubble down (negative) or up (positive).",
-			"default": 0,
-			"min": -200,
-			"max": 200
-		},
-		"bubble-width": {
-			"type": "int",
-			"name": "Width",
-			"description": "Bubble width. Text wraps to fit.",
-			"default": 360,
-			"min": 150,
-			"max": 500,
-			"control": {
-				"slider": true,
-				"slider-step": 10
+		"bubble": {
+			"type": "custom:bubble",
+			"name": "Look & Voice",
+			"description": "Where the bubble sits, its size, font, colors and talking sound. Tap <cy>Customize</c> to design it with a live preview: drag the bubble on a mini game screen, pick themes and colors, and replay the reply with its voice.",
+			"default": {
+				"anchor": "top",
+				"x": 0,
+				"y": 0,
+				"width": 360,
+				"text-size": 0.7,
+				"font": "chat",
+				"background": [
+					0,
+					0,
+					0,
+					170
+				],
+				"text-color": [
+					255,
+					255,
+					255
+				],
+				"name-color": [
+					255,
+					255,
+					255
+				],
+				"duration": 4.0,
+				"typewriter": true,
+				"sound": "blip",
+				"volume": 60
 			}
-		},
-		"bubble-font": {
-			"type": "string",
-			"name": "Font",
-			"description": "<cy>Chat</c>: clean and readable. <cy>Big</c>: GD's bold font. <cy>Gold</c>: GD's yellow title font.",
-			"default": "Chat",
-			"one-of": [
-				"Chat",
-				"Big",
-				"Gold"
-			]
-		},
-		"bubble-text-size": {
-			"type": "float",
-			"name": "Text Size",
-			"description": "Size of the reply text. Big and Gold fonts look best around 0.4.",
-			"default": 0.7,
-			"min": 0.3,
-			"max": 1.5,
-			"control": {
-				"slider": true,
-				"slider-step": 0.05
-			}
-		},
-		"bubble-color": {
-			"type": "rgba",
-			"name": "Background",
-			"description": "Bubble color and transparency.",
-			"default": [
-				0,
-				0,
-				0,
-				170
-			]
-		},
-		"bubble-text-color": {
-			"type": "rgb",
-			"name": "Text Color",
-			"description": "Color of the reply text.",
-			"default": [
-				255,
-				255,
-				255
-			]
-		},
-		"bubble-name-color": {
-			"type": "rgb",
-			"name": "Name Color",
-			"description": "Tint for the AI's name. White keeps the gold font as it is. Also colors the AI's lines in the chat history.",
-			"default": [
-				255,
-				255,
-				255
-			]
-		},
-		"bubble-duration": {
-			"type": "float",
-			"name": "Stay On Screen",
-			"description": "Base number of seconds a reply stays on screen. Longer replies stay a little longer.",
-			"default": 4.0,
-			"min": 2.0,
-			"max": 15.0,
-			"control": {
-				"slider": true,
-				"slider-step": 0.5
-			}
-		},
-		"typewriter": {
-			"type": "bool",
-			"name": "Letter By Letter",
-			"description": "Replies appear letter by letter, with the talking sound.",
-			"default": true
-		},
-		"avatar-title": {
-			"type": "title",
-			"name": "Avatar"
 		},
 		"avatar": {
 			"type": "custom:avatar",
@@ -406,62 +339,18 @@
 			"type": "title",
 			"name": "Chat Window"
 		},
-		"chat-theme": {
-			"type": "string",
-			"name": "Theme",
-			"description": "<cy>Classic</c>: GD's brown popup. <cy>Custom Color</c>: a plain panel in the color below.",
-			"default": "Classic",
-			"one-of": [
-				"Classic",
-				"Custom Color"
-			]
-		},
-		"chat-color": {
-			"type": "rgb",
-			"name": "Custom Color",
-			"description": "Chat window color when Theme is Custom Color.",
-			"default": [
-				40,
-				40,
-				90
-			]
-		},
-		"chat-size": {
-			"type": "string",
-			"name": "Size",
-			"description": "<cy>Large</c> shows more of the conversation.",
-			"default": "Normal",
-			"one-of": [
-				"Normal",
-				"Large"
-			]
-		},
-		"sound-title": {
-			"type": "title",
-			"name": "Sound"
-		},
-		"talk-sound": {
-			"type": "string",
-			"name": "Talking Sound",
-			"description": "Voice blips while a reply appears. <cy>Blip</c>: classic RPG. <cy>Chirp</c>: bright. <cy>Soft</c>: calm.",
-			"default": "Blip",
-			"one-of": [
-				"Blip",
-				"Chirp",
-				"Soft",
-				"Off"
-			]
-		},
-		"talk-volume": {
-			"type": "int",
-			"name": "Talking Volume",
-			"description": "Loudness of the talking sound, on top of GD's sound effects volume.",
-			"default": 60,
-			"min": 0,
-			"max": 100,
-			"control": {
-				"slider": true,
-				"slider-step": 5
+		"chat-look": {
+			"type": "custom:chat-look",
+			"name": "Look",
+			"description": "The chat window's theme, color and size. Tap <cy>Customize</c> to see it live while you change it.",
+			"default": {
+				"custom-color": false,
+				"color": [
+					40,
+					40,
+					90
+				],
+				"large": false
 			}
 		},
 		"levels-title": {

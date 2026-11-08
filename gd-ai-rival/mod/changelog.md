@@ -8,6 +8,7 @@
 - Personality presets (Rival, Coach, Chill, Sarcastic) or your own, written in a big text editor (up to 1000 characters, paste and examples).
 - Avatar editor with a live bubble preview: pick a cube, colors and glow from the icon kit, or draw your own 16x16 icon.
 - Conversation memory per level, daily message limit, and an optional level lock.
-- Fully customizable: bubble colors, font, size and position, letter-by-letter text with talking sounds, chat window theme and size, and per-event reactions with custom directions.
+- Bubble Designer with a live preview: drag the bubble on a mini game screen, color themes, fonts, sizes and talking sounds, with a close-up that replays the reply. The chat window gets a live preview too.
+- Per-event reactions with custom directions.
 - Level creators can give their level its own AI with hidden `ai:` text objects.
 - Built for Geometry Dash 2.2091 and Geode v6.

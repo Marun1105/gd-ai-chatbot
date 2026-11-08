@@ -116,28 +116,15 @@ namespace {
     }
 
     BubbleAnchor parseAnchor(std::string_view text) {
-        auto value = normalizeKey(text);
-        if (value == "bottom") return BubbleAnchor::Bottom;
-        if (value == "top-left" || value == "topleft") return BubbleAnchor::TopLeft;
-        if (value == "top-right" || value == "topright") return BubbleAnchor::TopRight;
-        if (value == "bottom-left" || value == "bottomleft") return BubbleAnchor::BottomLeft;
-        if (value == "bottom-right" || value == "bottomright") return BubbleAnchor::BottomRight;
-        return BubbleAnchor::Top;
+        return look::parseAnchor(text);
     }
 
     std::string fontFile(std::string_view text) {
-        auto value = normalizeKey(text);
-        if (value == "big") return "bigFont.fnt";
-        if (value == "gold") return "goldFont.fnt";
-        return "chatFont.fnt";
+        return look::fontFile(look::parseFont(text));
     }
 
     std::string soundFile(std::string_view text) {
-        auto value = normalizeKey(text);
-        if (value == "blip") return "blip.wav"_spr;
-        if (value == "chirp") return "chirp.wav"_spr;
-        if (value == "soft") return "soft.wav"_spr;
-        return "";
+        return look::soundFile(look::parseSound(text));
     }
 
     std::string presetPersona(std::string_view preset, std::string const& name) {
@@ -342,25 +329,27 @@ Profile profile::current() {
     events.onComplete = clip(settings::longText("note-complete"), MAX_NOTE_CHARS);
 
     auto& bubble = p.bubble;
-    bubble.anchor = parseAnchor(setting<std::string>("bubble-position"));
-    bubble.offsetX = static_cast<float>(setting<int64_t>("bubble-offset-x"));
-    bubble.offsetY = static_cast<float>(setting<int64_t>("bubble-offset-y"));
-    bubble.width = static_cast<float>(setting<int64_t>("bubble-width"));
-    bubble.textScale = static_cast<float>(setting<double>("bubble-text-size"));
-    bubble.font = fontFile(setting<std::string>("bubble-font"));
-    bubble.background = setting<ccColor4B>("bubble-color");
-    bubble.textColor = setting<ccColor3B>("bubble-text-color");
-    bubble.nameColor = setting<ccColor3B>("bubble-name-color");
-    bubble.duration = static_cast<float>(setting<double>("bubble-duration"));
-    bubble.typewriter = setting<bool>("typewriter");
+    auto bubbleLook = settings::bubble();
+    bubble.anchor = bubbleLook.anchor;
+    bubble.offsetX = bubbleLook.offsetX;
+    bubble.offsetY = bubbleLook.offsetY;
+    bubble.width = bubbleLook.width;
+    bubble.textScale = bubbleLook.textScale;
+    bubble.font = look::fontFile(bubbleLook.font);
+    bubble.background = bubbleLook.background;
+    bubble.textColor = bubbleLook.textColor;
+    bubble.nameColor = bubbleLook.nameColor;
+    bubble.duration = bubbleLook.duration;
+    bubble.typewriter = bubbleLook.typewriter;
     bubble.avatar = settings::avatar();
 
-    p.soundFile = soundFile(setting<std::string>("talk-sound"));
-    p.soundVolume = static_cast<float>(setting<int64_t>("talk-volume")) / 100.f;
+    p.soundFile = look::soundFile(bubbleLook.sound);
+    p.soundVolume = static_cast<float>(bubbleLook.volume) / 100.f;
 
-    p.chatCustomColor = setting<std::string>("chat-theme") == "Custom Color";
-    p.chatColor = setting<ccColor3B>("chat-color");
-    p.chatLarge = setting<std::string>("chat-size") == "Large";
+    auto chat = settings::chatLook();
+    p.chatCustomColor = chat.customColor;
+    p.chatColor = chat.color;
+    p.chatLarge = chat.large;
 
     // Outside a level (e.g. testing from the settings page) only the player's settings apply
     std::string levelPersona;

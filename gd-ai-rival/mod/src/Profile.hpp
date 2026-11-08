@@ -3,6 +3,7 @@
 #include <Geode/Geode.hpp>
 
 #include "Avatar.hpp"
+#include "Look.hpp"
 
 #include <map>
 #include <string>
@@ -14,7 +15,6 @@
 // cooldown, chance) are deliberately not part of this: levels can't touch them.
 
 enum class ReplyLength { VeryShort, Short, Medium };
-enum class BubbleAnchor { Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
 
 struct BubbleStyle {
     BubbleAnchor anchor = BubbleAnchor::Top;

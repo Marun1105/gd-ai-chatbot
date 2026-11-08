@@ -6,7 +6,7 @@ Talk to an AI while you play. It watches your run and reacts to what happens:
 - **Reactions**: it comments on deaths, new bests and completions, without spamming every attempt.
 - **Memory**: it remembers the recent conversation for the current level.
 - **Personalities**: Rival, Coach, Chill, Sarcastic, or write your own.
-- **Your style**: bubble colors, font, size and position, an avatar you pick from the icon kit or draw yourself in the built-in editor, letter-by-letter text with talking sounds, chat window theme.
+- **Your style**, designed with live previews: drag the speech bubble where you want it on a mini game screen, pick its font, colors and talking sound, pick or draw the AI's icon, and theme the chat window.
 - **Level creators** can give their level its own AI character (see below).
 - **Any AI**: Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, or any OpenAI-compatible API.
 
