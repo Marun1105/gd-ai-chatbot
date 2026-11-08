@@ -95,8 +95,10 @@ namespace {
         auto picked = mod->getSettingValue<asp::fs::Path>(SETTING);
         auto copy = copyPath();
         if (picked.empty() || picked.string() == NO_PICTURE) {
-            if (asp::fs::exists(copy)) (void)asp::fs::removeFile(copy);
+            bool had = asp::fs::exists(copy);
+            if (had) (void)asp::fs::removeFile(copy);
             mod->setSavedValue<std::string>(SOURCE_KEY, "");
+            if (changed && had) Notification::create("Grin is back to its 3D look.", NotificationIcon::Success)->show();
             return;
         }
 
