@@ -199,7 +199,7 @@ namespace {
     }};
 
     // Tags for the color rows
-    enum ColorTarget { BACKGROUND = 0, TEXT = 1, NAME = 2 };
+    enum ColorTarget { TARGET_BACKGROUND = 0, TARGET_TEXT = 1, TARGET_NAME = 2 };
 
     // Layout of the bubble designer (offsets from the popup's center)
     constexpr float DESIGNER_W = 480.f;
@@ -653,13 +653,13 @@ void BubbleDesigner::buildColors() {
     };
 
     auto const& bg = m_look.background;
-    addColorRow("Background", 32, BACKGROUND, { bg.r, bg.g, bg.b }, bg.a);
+    addColorRow("Background", 32, TARGET_BACKGROUND, { bg.r, bg.g, bg.b }, bg.a);
     this->addRow("Opacity", 8, 0.f, 255.f, 5.f, bg.a,
         [](float v) { return fmt::format("{}%", static_cast<int>(std::round(v / 2.55f))); },
         [this](float v) { m_look.background.a = static_cast<GLubyte>(v); this->refreshPreview(false); }
     );
-    addColorRow("Text", -22, TEXT, m_look.textColor, 255);
-    addColorRow("Name", -50, NAME, m_look.nameColor, 255);
+    addColorRow("Text", -22, TARGET_TEXT, m_look.textColor, 255);
+    addColorRow("Name", -50, TARGET_NAME, m_look.nameColor, 255);
 
     auto hint = CCLabelBMFont::create("White keeps the name gold", "chatFont.fnt");
     hint->setScale(.45f);
@@ -749,15 +749,15 @@ void BubbleDesigner::onPickColor(CCObject* sender) {
     int target = static_cast<CCNode*>(sender)->getTag();
     Ref<BubbleDesigner> self = this;
     ColorPickPopup* popup = nullptr;
-    if (target == BACKGROUND) {
+    if (target == TARGET_BACKGROUND) {
         popup = ColorPickPopup::create(m_look.background);
     }
     else {
-        popup = ColorPickPopup::create(target == TEXT ? m_look.textColor : m_look.nameColor);
+        popup = ColorPickPopup::create(target == TARGET_TEXT ? m_look.textColor : m_look.nameColor);
     }
     popup->setCallback([self, target](ccColor4B const& color) {
-        if (target == BACKGROUND) self->m_look.background = color;
-        else if (target == TEXT) self->m_look.textColor = { color.r, color.g, color.b };
+        if (target == TARGET_BACKGROUND) self->m_look.background = color;
+        else if (target == TARGET_TEXT) self->m_look.textColor = { color.r, color.g, color.b };
         else self->m_look.nameColor = { color.r, color.g, color.b };
         self->rebuildControls();
         self->refreshPreview(false);

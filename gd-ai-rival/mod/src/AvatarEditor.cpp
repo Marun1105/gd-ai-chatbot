@@ -711,9 +711,9 @@ void AvatarEditor::refreshPreview() {
     m_bubbleHolder->addChild(bg);
 
     float textLeft = -W / 2 + 6.f;
-    if (auto small = avatar::create(m_look, AVATAR)) {
-        small->setPosition({ -W / 2 + 6.f + AVATAR / 2, 0.f });
-        m_bubbleHolder->addChild(small);
+    if (auto mini = avatar::create(m_look, AVATAR)) {
+        mini->setPosition({ -W / 2 + 6.f + AVATAR / 2, 0.f });
+        m_bubbleHolder->addChild(mini);
         textLeft += AVATAR + 5.f;
     }
 
