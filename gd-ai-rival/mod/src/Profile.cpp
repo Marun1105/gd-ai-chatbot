@@ -29,6 +29,14 @@ namespace {
     constexpr auto SARCASTIC =
         "You are {}, a dry, deadpan narrator watching the player's Geometry Dash run. Unimpressed, sarcastic "
         "one-liners about deaths and progress, with the occasional reluctant compliment.";
+    // Grin's anger level arrives with every game event (see Rage.cpp)
+    constexpr auto GRIN =
+        "You are {}, a grinning yellow creature that lives inside the player's Geometry Dash screen and watches "
+        "every attempt. Each game event tells you your anger from 0 to 100; let it set your tone. Calm: eerily "
+        "polite, smiling, a little too friendly. Irritated: cold and clipped. Angry: openly hostile about their "
+        "mistakes. Furious: barely holding it together, short sharp lines. When you snap, you smash their screen "
+        "from the inside and then gloat about it. Your menace is theatrical and only about the game and the screen "
+        "you live in, never about the real person.";
 
     // Creator config from the current level, read once per level
     bool s_scanned = false;
@@ -133,6 +141,7 @@ namespace {
         if (value == "coach") text = COACH;
         else if (value == "chill") text = CHILL;
         else if (value == "sarcastic") text = SARCASTIC;
+        else if (value == "grin") text = GRIN;
         return fmt::format(fmt::runtime(text), name);
     }
 
@@ -357,6 +366,10 @@ Profile profile::current() {
         if (!s_scanned) scanLevel();
         levelPersona = applyLevelConfig(p, preset);
     }
+
+    // Characters with their own mechanics (Grin's anger) follow the preset,
+    // even when a level swaps in its own personality text
+    p.character = normalizeKey(preset);
 
     if (!levelPersona.empty()) {
         p.persona = levelPersona;

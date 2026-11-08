@@ -1,4 +1,6 @@
 #include "SpeechBubble.hpp"
+#include "Rage.hpp"
+#include "RageEvent.hpp"
 
 #include <random>
 
@@ -118,7 +120,17 @@ bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, S
     this->addChild(m_bg);
 
     if (hasAvatar) {
-        m_avatar = this->createAvatar(look);
+        // Grin shows its own face (unless the player picked a drawing or their
+        // own icon), going redder the angrier it gets
+        if (profile.character == "grin" && look.avatar.mode == AvatarMode::Icon) {
+            auto face = RageEvent::createFace(AVATAR_SIZE);
+            float anger = rage::level();
+            face->setColor({ 255, static_cast<GLubyte>(255 - 150 * anger), static_cast<GLubyte>(255 - 150 * anger) });
+            m_avatar = face;
+        }
+        else {
+            m_avatar = this->createAvatar(look);
+        }
         if (m_avatar) {
             m_avatar->setPosition({ PADDING + AVATAR_SIZE / 2, height / 2 });
             this->addChild(m_avatar);

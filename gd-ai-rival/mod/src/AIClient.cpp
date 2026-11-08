@@ -1,4 +1,5 @@
 #include "AIClient.hpp"
+#include "Rage.hpp"
 #include "GameInfo.hpp"
 #include "Prompt.hpp"
 #include "SpeechBubble.hpp"
@@ -160,7 +161,7 @@ void AIClient::onLevelStart() {
     this->sendEvent(withNote(std::move(text), rules.onStart), "* Entered the level");
 }
 
-void AIClient::onDeath(int percent, int attempt, bool practice, std::string const& situation) {
+void AIClient::onDeath(int percent, int attempt, bool practice, std::string const& situation, bool silent) {
     if (!m_active) return;
     m_attempt = attempt;
     m_sessionDeaths++;
@@ -170,7 +171,7 @@ void AIClient::onDeath(int percent, int attempt, bool practice, std::string cons
     int oldBest = m_level.bestPercent;
     if (newBest) m_level.bestPercent = percent;
 
-    if (!setting("auto-reactions") || (practice && !setting("react-in-practice"))) return;
+    if (silent || !setting("auto-reactions") || (practice && !setting("react-in-practice"))) return;
     auto rules = profile::current().events;
     auto doing = situation.empty() ? std::string() : fmt::format(" ({})", situation);
 
@@ -183,6 +184,7 @@ void AIClient::onDeath(int percent, int attempt, bool practice, std::string cons
         auto text = oldBest == 0
             ? fmt::format("[GAME EVENT] NEW BEST: the player died at {}%{} on attempt {}, their first progress on this level.", percent, doing, attempt)
             : fmt::format("[GAME EVENT] NEW BEST: the player died at {}%{} on attempt {}, beating their old best of {}%.", percent, doing, attempt, oldBest);
+        text += rage::eventNote();
         this->sendEvent(withNote(std::move(text), rules.onNewBest), fmt::format("* New best: {}%", percent));
         return;
     }
@@ -214,6 +216,7 @@ void AIClient::onDeath(int percent, int attempt, bool practice, std::string cons
         text += fmt::format(" That's death number {} at {}% this session.", deathsHere, percent);
     }
     text += fmt::format(" {} deaths this session so far.", m_sessionDeaths);
+    text += rage::eventNote();
     if (auto hotspots = this->deathHotspots(); !hotspots.empty()) {
         text += fmt::format(" Most common death spots this session: {}.", hotspots);
     }
@@ -226,6 +229,17 @@ void AIClient::onDeath(int percent, int attempt, bool practice, std::string cons
         }
     }
     this->sendEvent(withNote(std::move(text), rules.onDeath), fmt::format("* Died{}", where));
+}
+
+void AIClient::onRage() {
+    if (!m_active || !setting("auto-reactions")) return;
+    if (!this->canSendEvent(Priority::Always)) return;
+    this->sendEvent(
+        "[GAME EVENT] Your anger hit 100/100 and you snapped: the screen went dark, you roared, lunged at the "
+        "glass from the inside and smashed the player's screen to pieces. Their screen is back now and your "
+        "anger has dropped a little. Say something about what you just did.",
+        "* " + this->getName() + " smashed your screen"
+    );
 }
 
 void AIClient::onComplete(int attempt, bool practice) {

@@ -6,6 +6,9 @@
 #include "ChatPopup.hpp"
 #include "ConnectionPopup.hpp"
 #include "GameInfo.hpp"
+#include "Rage.hpp"
+#include "RageBar.hpp"
+#include "RageEvent.hpp"
 
 using namespace geode::prelude;
 
@@ -64,6 +67,9 @@ class $modify(AIPlayLayer, PlayLayer) {
         bool active = false;
         // destroyPlayer can fire more than once per death (dual mode)
         bool deathReported = false;
+        RageBar* rageBar = nullptr;
+        // GD tried to restart while Grin was smashing the screen
+        bool resetPending = false;
     };
 
     bool init(GJGameLevel* level, bool dontCreateObjects) {
@@ -87,7 +93,31 @@ class $modify(AIPlayLayer, PlayLayer) {
         });
         client.onLevelStart();
         this->addChatButton();
+        rage::startLevel(level, m_isPlatformer);
+        this->addRageBar();
         return true;
+    }
+
+    void addRageBar() {
+        // Grin's anger bar, top-left. Created even when hidden: it also lets
+        // the anger cool down while you play.
+        if (!rage::active() || !m_uiLayer) return;
+        auto bar = RageBar::create();
+        auto winSize = CCDirector::get()->getWinSize();
+        bar->setPosition({ 8.f, winSize.height - 6.f });
+        bar->setVisible(Mod::get()->getSettingValue<bool>("rage-bar"));
+        m_uiLayer->addChild(bar, 10);
+        m_fields->rageBar = bar;
+    }
+
+    void rageFinished() {
+        rage::afterSnap();
+        if (m_fields->rageBar) m_fields->rageBar->refresh();
+        if (m_fields->resetPending) {
+            m_fields->resetPending = false;
+            this->resetLevel();
+        }
+        AIClient::get().onRage();
     }
 
     void addChatButton() {
@@ -127,21 +157,42 @@ class $modify(AIPlayLayer, PlayLayer) {
         if (!player || !player->m_isDead || m_fields->deathReported) return;
 
         m_fields->deathReported = true;
-        AIClient::get().onDeath(
-            m_isPlatformer ? 0 : this->getCurrentPercentInt(),
-            m_attempts,
-            m_isPracticeMode || m_isTestMode,
-            gameinfo::situation(player, m_gameState.m_isDualMode)
-        );
+        int percent = m_isPlatformer ? 0 : this->getCurrentPercentInt();
+        auto situation = gameinfo::situation(player, m_gameState.m_isDualMode);
+
+        bool snapped = false;
+        if (rage::active()) {
+            auto result = rage::onDeath(percent, m_attempts, m_isPracticeMode, m_isTestMode);
+            if (m_fields->rageBar) m_fields->rageBar->refresh(result.gained > 0.f);
+            snapped = result.snapped;
+        }
+
+        // The screen break gets its own comment once it's over
+        AIClient::get().onDeath(percent, m_attempts, m_isPracticeMode || m_isTestMode, situation, snapped);
+        if (snapped) {
+            RageEvent::play([] {
+                if (auto playLayer = static_cast<AIPlayLayer*>(PlayLayer::get())) playLayer->rageFinished();
+            });
+        }
     }
 
     void resetLevel() {
+        // Hold the restart while Grin smashes the screen, or the next attempt
+        // would start (and probably end) behind the dark overlay
+        if (RageEvent::isActive()) {
+            m_fields->resetPending = true;
+            return;
+        }
         PlayLayer::resetLevel();
         m_fields->deathReported = false;
     }
 
     void levelComplete() {
         PlayLayer::levelComplete();
+        if (m_fields->active && rage::active()) {
+            rage::onComplete();
+            if (m_fields->rageBar) m_fields->rageBar->refresh();
+        }
         if (m_fields->active) {
             AIClient::get().onComplete(m_attempts, m_isPracticeMode || m_isTestMode);
         }
@@ -150,6 +201,7 @@ class $modify(AIPlayLayer, PlayLayer) {
     void onQuit() {
         if (m_fields->active) {
             AIClient::get().endLevel();
+            rage::endLevel();
         }
         PlayLayer::onQuit();
     }

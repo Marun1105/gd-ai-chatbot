@@ -10,5 +10,6 @@
 - Conversation memory per level, daily message limit, and an optional level lock.
 - Bubble Designer with a live preview: drag the bubble on a mini game screen, color themes, fonts, sizes and talking sounds, with a close-up that replays the reply. The chat window gets a live preview too.
 - Per-event reactions with custom directions.
+- Grin: a creepy character living in your screen that gets angrier with every death. Its anger bar weighs how painful each death was, and when it fills up the screen goes dark, Grin roars, and your screen cracks and shatters.
 - Level creators can give their level its own AI with hidden `ai:` text objects.
 - Built for Geometry Dash 2.2091 and Geode v6.

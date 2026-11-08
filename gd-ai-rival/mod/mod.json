@@ -60,13 +60,14 @@
 		"personality-preset": {
 			"type": "string",
 			"name": "Personality",
-			"description": "<cy>Rival</c>: cocky trash talk. <cy>Coach</c>: hype and tips. <cy>Chill</c>: laid-back friend. <cy>Sarcastic</c>: deadpan narrator. <cy>Custom</c>: write your own below.",
+			"description": "<cy>Rival</c>: cocky trash talk. <cy>Coach</c>: hype and tips. <cy>Chill</c>: laid-back friend. <cy>Sarcastic</c>: deadpan narrator. <cy>Grin</c>: a creepy creature living in your screen that gets angrier every time you die, and smashes your screen when it snaps (see <cy>Grin</c> below). <cy>Custom</c>: write your own below.",
 			"default": "Rival",
 			"one-of": [
 				"Rival",
 				"Coach",
 				"Chill",
 				"Sarcastic",
+				"Grin",
 				"Custom"
 			]
 		},
@@ -106,6 +107,46 @@
 			"control": {
 				"slider": true,
 				"slider-step": 1
+			}
+		},
+		"grin-title": {
+			"type": "title",
+			"name": "Grin",
+			"description": "Only used when Personality is Grin."
+		},
+		"rage-bar": {
+			"type": "bool",
+			"name": "Anger Bar",
+			"description": "Shows how angry Grin is in the top-left corner of the level. Deaths fill it: a 1% death on your first tries barely counts, a 90%+ death on an extreme demon counts a lot, and dying at the same spot again and again counts more each time. New bests calm it down a little and beating the level calms it completely.",
+			"default": true
+		},
+		"rage-temper": {
+			"type": "string",
+			"name": "Temper",
+			"description": "How fast Grin gets angry. <cy>Patient</c> takes much longer to snap, <cy>Short Fuse</c> snaps quickly.",
+			"default": "Normal",
+			"one-of": [
+				"Patient",
+				"Normal",
+				"Short Fuse"
+			]
+		},
+		"rage-jumpscare": {
+			"type": "bool",
+			"name": "Screen Break",
+			"description": "When the bar fills up, the screen goes dark, Grin roars and smashes your screen from the inside, and it shatters. The level waits until it is over. No flashing lights, but it is a scare: turn it off if you don't want that.",
+			"default": true
+		},
+		"rage-volume": {
+			"type": "int",
+			"name": "Roar Volume",
+			"description": "Loudness of the roar and the breaking glass.",
+			"default": 80,
+			"min": 0,
+			"max": 100,
+			"control": {
+				"slider": true,
+				"slider-step": 5
 			}
 		},
 		"controls-title": {

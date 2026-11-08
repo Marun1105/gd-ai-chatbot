@@ -6,6 +6,7 @@ Talk to an AI while you play. It watches your run and reacts to what happens:
 - **Reactions**: it comments on deaths, new bests and completions, without spamming every attempt.
 - **Memory**: it remembers the recent conversation for the current level.
 - **Personalities**: Rival, Coach, Chill, Sarcastic, or write your own.
+- **Grin**: a creepy character that lives in your screen. Every death makes it angrier (1% on a first try barely counts, 90% on an extreme demon counts a lot), and when its anger bar fills up it smashes your screen. Pick it under Personality.
 - **Your style**, designed with live previews: drag the speech bubble where you want it on a mini game screen, pick its font, colors and talking sound, pick or draw the AI's icon, and theme the chat window.
 - **Level creators** can give their level its own AI character (see below).
 - **Any AI**: Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, or any OpenAI-compatible API.
