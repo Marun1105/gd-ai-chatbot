@@ -30,56 +30,6 @@ namespace {
         if (volume > 0.f) FMODAudioEngine::get()->playEffect(file, speed, 0.f, volume);
     }
 
-    // Draws a sprite as a flat shape in its own color: the flash when a shot
-    // lands, which plain tinting can't do on a creature this dark. Built per
-    // fight rather than cached, so a lost GL context on phones can't leave a
-    // dead program behind.
-    CCGLProgram* createSilhouetteShader() {
-        constexpr auto VERTEX = R"(
-attribute vec4 a_position;
-attribute vec2 a_texCoord;
-attribute vec4 a_color;
-#ifdef GL_ES
-varying lowp vec4 v_fragmentColor;
-varying mediump vec2 v_texCoord;
-#else
-varying vec4 v_fragmentColor;
-varying vec2 v_texCoord;
-#endif
-void main() {
-    gl_Position = CC_MVPMatrix * a_position;
-    v_fragmentColor = a_color;
-    v_texCoord = a_texCoord;
-}
-)";
-        constexpr auto FRAGMENT = R"(
-#ifdef GL_ES
-precision lowp float;
-#endif
-varying vec4 v_fragmentColor;
-varying vec2 v_texCoord;
-void main() {
-    float alpha = texture2D(CC_Texture0, v_texCoord).a * v_fragmentColor.a;
-    gl_FragColor = vec4(v_fragmentColor.rgb * alpha, alpha);
-}
-)";
-        auto program = new CCGLProgram();
-        if (!program->initWithVertexShaderByteArray(VERTEX, FRAGMENT)) {
-            program->release();
-            return nullptr;
-        }
-        program->addAttribute(kCCAttributeNamePosition, kCCVertexAttrib_Position);
-        program->addAttribute(kCCAttributeNameColor, kCCVertexAttrib_Color);
-        program->addAttribute(kCCAttributeNameTexCoord, kCCVertexAttrib_TexCoords);
-        if (!program->link()) {
-            program->release();
-            return nullptr;
-        }
-        program->updateUniforms();
-        program->autorelease();
-        return program;
-    }
-
     CCLabelBMFont* popText(char const* text, char const* font, float scale, ccColor3B color) {
         auto label = CCLabelBMFont::create(text, font);
         label->setColor(color);
@@ -131,13 +81,16 @@ bool RageFight::init(std::function<void(Result)> onDone) {
     m_grin->runAction(CCEaseBackOut::create(CCMoveTo::create(.6f, { m_win.width / 2, m_win.height * .45f })));
     m_world->addChild(m_grin, 1);
 
-    // The hit flash: the same picture drawn as a hot white shape on top
-    if (auto shader = createSilhouetteShader()) {
+    // The hit flash: the same picture drawn as a flat hot-white shape on top
+    // (tinting alone barely shows on a creature this dark). GD's built-in
+    // text shader does exactly that: its color, the picture's alpha. Built-in
+    // means nothing is compiled here, and it survives a lost GL context.
+    if (auto shader = CCShaderCache::sharedShaderCache()->programForKey(kCCShader_PositionTextureA8Color)) {
         m_grinFlash = CCSprite::createWithTexture(m_grin->getTexture());
         m_grinFlash->setFlipY(m_grin->isFlipY());
         m_grinFlash->setShaderProgram(shader);
         m_grinFlash->setOpacityModifyRGB(false);
-        m_grinFlash->setBlendFunc({ GL_ONE, GL_ONE_MINUS_SRC_ALPHA });
+        m_grinFlash->setBlendFunc({ GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA });
         m_grinFlash->setColor({ 255, 236, 200 });
         m_grinFlash->setOpacity(0);
         m_grinFlash->setAnchorPoint({ 0.f, 0.f });
