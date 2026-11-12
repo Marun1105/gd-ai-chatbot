@@ -164,17 +164,17 @@
 		"rage-fight": {
 			"type": "bool",
 			"name": "Fight Back",
-			"description": "After the screen breaks, fight Grin in a short mini-game inside your broken screen: tap Grin to hit it (the head hurts more) and shoot it enough to stop its charges before they reach you. Win and its anger drops to zero; lose and it stays angry.",
+			"description": "After the screen breaks, fight Grin inside your broken screen: tap it to shoot (headshots hurt more), shoot it during its charges to knock it back, and at half health shoot down the glass it throws at you. 4 hearts, 35 seconds. Win and its anger drops to zero; lose and it stays angry.",
 			"default": true,
 			"enable-if": "rage-jumpscare"
 		},
 		"rage-volume": {
 			"type": "int",
-			"name": "Roar Volume",
-			"description": "Loudness of the roar and the breaking glass.",
-			"default": 80,
+			"name": "Grin Volume",
+			"description": "Loudness of Grin's voice, the roar, the breaking glass and the fight. Above 100 boosts it past normal.",
+			"default": 100,
 			"min": 0,
-			"max": 100,
+			"max": 150,
 			"control": {
 				"slider": true,
 				"slider-step": 5

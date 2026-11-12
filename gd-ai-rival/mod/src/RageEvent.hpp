@@ -55,7 +55,7 @@ protected:
     void fall(float dt);
     void shake(float dt);
     void afterShatter();
-    void roarFrame(float);
+    void dust(cocos2d::CCPoint where, int count, float reach);
     void fadeAway();
     void finish();
 
@@ -65,7 +65,8 @@ protected:
     // The 3D renders of the face, closed and open mouth (null if missing)
     cocos2d::CCTexture2D* m_faceTexture = nullptr;
     cocos2d::CCTexture2D* m_roarTexture = nullptr;
-    bool m_mouthOpen = false;
+    // The open-mouthed picture, faded in over the face while it roars
+    cocos2d::CCSprite* m_jaw = nullptr;
     bool m_finished = false;
     cocos2d::CCSize m_win;
 

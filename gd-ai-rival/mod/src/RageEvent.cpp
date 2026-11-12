@@ -213,7 +213,7 @@ bool RageEvent::init(std::function<void(RageOutcome)> onDone) {
     this->setKeypadEnabled(true);
 
     this->runAction(CCSequence::create(
-        CCDelayTime::create(SNIGGER_AT), CallFuncExt::create([] { playSound("grin-snigger.ogg"_spr, .55f); }),
+        CCDelayTime::create(SNIGGER_AT), CallFuncExt::create([] { playSound("grin-snigger.ogg"_spr, .85f); }),
         CCDelayTime::create(ROAR_AT - SNIGGER_AT), CallFuncExt::create([this] { this->roar(); }),
         CCDelayTime::create(LUNGE_AFTER), CallFuncExt::create([this] { this->lunge(); }),
         CCDelayTime::create(IMPACT_AFTER), CallFuncExt::create([this] { this->impact(); }),
@@ -368,46 +368,79 @@ void RageEvent::buildShards(float) {
 void RageEvent::roar() {
     playSound("roar.ogg"_spr);
     m_face->setVisible(true);
-    if (m_faceTexture && m_roarTexture) {
-        this->schedule(schedule_selector(RageEvent::roarFrame), .11f);
-    }
+    m_face->setCascadeOpacityEnabled(true);
     float target = m_face->getScale();
     m_face->setScale(target * .45f);
     m_face->setOpacity(0);
-    m_face->runAction(CCFadeIn::create(.25f));
+    m_face->runAction(CCFadeIn::create(.2f));
     m_face->runAction(CCEaseBackOut::create(CCScaleTo::create(.4f, target)));
-    // Breathing while it roars
+    // Breathing while it roars: slow and heavy, not a flicker
     m_face->runAction(CCSequence::create(
         CCDelayTime::create(.4f),
         CCRepeat::create(CCSequence::create(
-            CCScaleTo::create(.09f, target * 1.04f), CCScaleTo::create(.09f, target), nullptr
-        ), 3),
+            CCEaseInOut::create(CCScaleTo::create(.15f, target * 1.035f), 2.f),
+            CCEaseInOut::create(CCScaleTo::create(.15f, target), 2.f), nullptr
+        ), 2),
         nullptr
     ));
+
+    // The jaw drops open smoothly: the open-mouthed picture fades in over
+    // the closed one (same framing), then works slowly while it roars
+    if (m_roarTexture && m_faceTexture && m_roarTexture != m_faceTexture) {
+        m_jaw = CCSprite::createWithTexture(m_roarTexture);
+        m_jaw->setPosition(m_face->getContentSize() / 2);
+        m_jaw->setOpacity(0);
+        m_face->addChild(m_jaw);
+        m_jaw->runAction(CCSequence::create(
+            CCDelayTime::create(.1f),
+            CCFadeIn::create(.16f),
+            CCRepeat::create(CCSequence::create(CCFadeTo::create(.22f, 200), CCFadeTo::create(.22f, 255), nullptr), 2),
+            nullptr
+        ));
+    }
+    else {
+        // One picture: it flushes red as it roars
+        m_face->runAction(CCSequence::create(CCDelayTime::create(.1f), CCTintTo::create(.3f, 255, 140, 130), nullptr));
+    }
+
+    // A red pulse through the dark as it appears
+    m_flash->setColor({ 255, 30, 15 });
+    m_flash->setOpacity(80);
+    m_flash->runAction(CCFadeTo::create(.4f, 0));
+
     m_shakeTime = LUNGE_AFTER;
     m_shakeStrength = 5.f;
 }
 
-void RageEvent::roarFrame(float) {
-    // Jaw working while it roars; a single picture flushes red instead
-    m_mouthOpen = !m_mouthOpen;
-    if (m_roarTexture != m_faceTexture) {
-        m_face->setTexture(m_mouthOpen ? m_roarTexture : m_faceTexture);
-    }
-    else {
-        m_face->setColor(m_mouthOpen ? ccColor3B { 255, 140, 130 } : ccColor3B { 255, 255, 255 });
-    }
-}
-
 void RageEvent::lunge() {
     // It throws itself at the glass, mouth wide open
-    this->unschedule(schedule_selector(RageEvent::roarFrame));
-    if (m_roarTexture) m_face->setTexture(m_roarTexture);
-    m_face->setColor({ 255, 255, 255 });
+    if (m_jaw) {
+        m_jaw->stopAllActions();
+        m_jaw->setOpacity(255);
+    }
     float target = m_face->getScale();
     m_face->stopAllActions();
     m_face->runAction(CCEaseIn::create(CCScaleTo::create(IMPACT_AFTER, target * 3.2f), 2.f));
     m_face->runAction(CCMoveTo::create(IMPACT_AFTER, m_impact));
+}
+
+void RageEvent::dust(CCPoint where, int count, float reach) {
+    // Glass dust and splinters flying from where it hit
+    for (int i = 0; i < count; i++) {
+        float size = randomIn(1.5f, 3.5f);
+        auto speck = CCLayerColor::create({ 220, 240, 255, 255 }, size, size);
+        speck->setBlendFunc({ GL_SRC_ALPHA, GL_ONE });
+        speck->setPosition(where);
+        float angle = randomIn(0.f, 2 * PI), distance = randomIn(reach * .3f, reach), time = randomIn(.35f, .7f);
+        speck->runAction(CCSequence::create(
+            CCSpawn::create(
+                CCEaseOut::create(CCMoveBy::create(time, { std::cos(angle) * distance, std::sin(angle) * distance - 40.f }), 2.f),
+                CCFadeOut::create(time), nullptr
+            ),
+            CCRemoveSelf::create(), nullptr
+        ));
+        m_root->addChild(speck, 4);
+    }
 }
 
 void RageEvent::impact() {
@@ -415,8 +448,11 @@ void RageEvent::impact() {
     // The dark stays underneath, so the jolt never shows the live level at the edges
     m_screen->setVisible(true);
 
-    // One soft flash (not a strobe) and a hard jolt
+    // One soft flash (not a strobe), a hard jolt and glass dust
+    m_flash->stopAllActions();
+    m_flash->setColor({ 255, 255, 255 });
     m_flash->setOpacity(110);
+    this->dust(m_impact, 40, 220.f);
     m_flash->runAction(CCFadeTo::create(.18f, 0));
     m_shakeTime = .3f;
     m_shakeStrength = 11.f;
@@ -477,6 +513,7 @@ void RageEvent::shatter() {
     m_cracks->setVisible(false);
     for (auto& shard : m_shards) shard.sprite->setVisible(true);
     playSound("shatter.ogg"_spr);
+    this->dust(m_impact, 50, 360.f);
     m_shakeTime = .2f;
     m_shakeStrength = 6.f;
 
