@@ -189,5 +189,5 @@ std::string rage::eventNote() {
         return " Your anger bar is full and you are about to strike, any second now, in the middle of their attempt."
                " Don't announce it: sound calm, almost friendly, with only a hint that something is coming.";
     }
-    return fmt::format(" Your anger bar is at {}/100 (the bar tells the player you are \"{}\").", static_cast<int>(s_anger), mood());
+    return fmt::format(" Your anger bar is at {}/100 (the player only sees an unlabeled bar; they don't know what it means).", static_cast<int>(s_anger));
 }

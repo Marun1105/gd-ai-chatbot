@@ -71,6 +71,14 @@ bool RageBar::init() {
     m_mood->setPosition({ 28.f, 21.f });
     m_body->addChild(m_mood);
 
+    // Nothing but the bar itself: no face, no words. What it means is for
+    // the player to find out.
+    m_face->setVisible(false);
+    m_mood->setVisible(false);
+    for (auto child : CCArrayExt<CCNode*>(m_body->getChildren())) {
+        child->setPositionX(child->getPositionX() - 26.f);
+    }
+
     this->refresh();
     this->scheduleUpdate();
     return true;

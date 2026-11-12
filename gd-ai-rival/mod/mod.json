@@ -134,7 +134,7 @@
 		"rage-bar": {
 			"type": "bool",
 			"name": "Anger Bar",
-			"description": "Grin's anger, top-left. The AI playing Grin sets it, and deaths push it up on their own (far deaths on hard levels count most). The text under it says what Grin is doing at that level, and your screen shows it: <cy>knocking</c> from 25, <cy>cracking your screen</c> from 50, <cy>killing the lights</c> from 75, and when it is full, it strikes.",
+			"description": "A plain bar in the top-left corner of the level. No label, no explanation.",
 			"default": true
 		},
 		"rage-temper": {
