@@ -6,7 +6,7 @@ Talk to an AI while you play. It watches your run and reacts to what happens:
 - **Reactions**: it comments on deaths, new bests and completions, without spamming every attempt.
 - **Memory**: it remembers the recent conversation for the current level.
 - **Personalities**: Rival, Coach, Chill, Sarcastic, or write your own.
-- **Grin**: a creepy 3D creature that lives in your screen. Every death makes it angrier (1% on a first try barely counts, 90% on an extreme demon counts a lot), and when its anger bar fills up it smashes your screen. Then fight it in a short mini-game: beat it and it calms down. Pick it under Personality, and give it your own picture under *Grin's Look* if you like.
+- **Grin**: a creepy 3D creature that lives in your screen. Every death makes it angrier (1% on a first try barely counts, 90% on an extreme demon counts a lot), and when its anger bar fills up it waits for a moment you don't expect, then the screen goes black and it smashes it. Then fight it in a short mini-game: beat it and it calms down. Pick it under Personality, and give it your own picture under *Grin's Look* if you like.
 - **Your style**, designed with live previews: drag the speech bubble where you want it on a mini game screen, pick its font, colors and talking sound, pick or draw the AI's icon, and theme the chat window.
 - **Level creators** can give their level its own AI character (see below).
 - **Any AI**: Claude, ChatGPT, Gemini, Grok, Groq, OpenRouter, Ollama, or any OpenAI-compatible API.
@@ -18,7 +18,7 @@ Talk to an AI while you play. It watches your run and reacts to what happens:
 3. Press **Get Key**, create a key on the website and copy it.
 4. Back in the game press **Paste**, then **Test**. If you see a reply, you're done!
 
-Tap **List** next to the model to see every model your key can use.
+Tap **List** next to the model to see every model your key can use. Models are labeled: <cg>RECOMMENDED</c> ones are fast and cheap and plenty for in-game chat (like Claude Haiku, Gemini Flash or GPT mini), and they're listed first.
 
 ## Which AI should I pick?
 
@@ -112,3 +112,5 @@ Players can turn level customization off in the settings. A level can never chan
 ## Credits
 
 Grin's 3D model is the "3D Horror Game Monster" by **HorrorGameMaker.com**, shared for free (CC0) on OpenGameArt.
+
+Grin's voice and the breaking glass are real recordings, all shared for free (CC0) on OpenGameArt: the demon voice pack by **Tim Rockk**, a monster roar by **trazzz123**, a scream by **Vinrax**, glass by **Till Behrend** and breaking sounds by **rubberduck**.

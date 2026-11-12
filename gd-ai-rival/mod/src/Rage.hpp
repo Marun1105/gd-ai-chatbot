@@ -21,8 +21,10 @@ namespace rage {
     struct DeathResult {
         float gained = 0.f;
         bool newBest = false;
-        // Anger hit the limit and the jumpscare should play
+        // Anger hit the limit and the jumpscare should play now
         bool snapped = false;
+        // Anger hit the limit and Grin will strike later, mid-attempt (Sneak Attack)
+        bool armed = false;
     };
     // testMode: started from a start position
     DeathResult onDeath(int percent, int attempt, bool practice, bool testMode);
@@ -31,6 +33,11 @@ namespace rage {
     void coolDown(float seconds);
     // After the screen break: still annoyed (or calm, if the player beat it)
     void afterSnap(float anger);
+
+    // Waiting for the right moment to strike (Sneak Attack)
+    bool armed();
+    // It struck: no longer waiting
+    void disarm();
 
     float anger();
     // 0..1 for the bar

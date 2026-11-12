@@ -8,6 +8,8 @@ using namespace geode::prelude;
 
 namespace {
     float s_anger = 0.f;
+    // Full of rage and waiting for the moment you least expect it
+    bool s_armed = false;
     float s_difficulty = 1.f;
     int s_best = 0;
     bool s_platformer = false;
@@ -61,6 +63,7 @@ float rage::difficultyWeight(GJGameLevel* level) {
 
 void rage::startLevel(GJGameLevel* level, bool platformer) {
     s_anger = 0.f;
+    s_armed = false;
     s_difficulty = difficultyWeight(level);
     s_best = level ? level->m_normalPercent.value() : 0;
     s_platformer = platformer;
@@ -69,6 +72,7 @@ void rage::startLevel(GJGameLevel* level, bool platformer) {
 
 void rage::endLevel() {
     s_anger = 0.f;
+    s_armed = false;
     s_spots.clear();
 }
 
@@ -80,6 +84,8 @@ rage::DeathResult rage::onDeath(int percent, int attempt, bool practice, bool te
     if (!practice && !testMode && !s_platformer && percent > s_best) {
         s_best = percent;
         s_anger = std::max(0.f, s_anger - 15.f);
+        // Progress talks it down from striking
+        s_armed = false;
         result.newBest = true;
         return result;
     }
@@ -109,23 +115,44 @@ rage::DeathResult rage::onDeath(int percent, int attempt, bool practice, bool te
     gain *= temper();
     s_anger = std::min(MAX, s_anger + gain);
     result.gained = gain;
-    result.snapped = s_anger >= MAX && Mod::get()->getSettingValue<bool>("rage-jumpscare");
+    if (s_anger >= MAX && Mod::get()->getSettingValue<bool>("rage-jumpscare")) {
+        if (Mod::get()->getSettingValue<bool>("rage-sneak")) {
+            // It doesn't strike now, while you expect it
+            result.armed = !s_armed;
+            s_armed = true;
+        }
+        else {
+            result.snapped = true;
+        }
+    }
     return result;
 }
 
 void rage::onComplete() {
     s_anger = 0.f;
+    s_armed = false;
     s_spots.clear();
 }
 
 void rage::coolDown(float seconds) {
+    // Waiting to strike: it doesn't calm down while it waits
+    if (s_armed) return;
     // About one point every ten seconds of staying alive
     s_anger = std::max(0.f, s_anger - seconds * .1f);
 }
 
 void rage::afterSnap(float anger) {
+    s_armed = false;
     s_anger = std::clamp(anger, 0.f, MAX - 1.f);
     s_spots.clear();
+}
+
+bool rage::armed() {
+    return s_armed;
+}
+
+void rage::disarm() {
+    s_armed = false;
 }
 
 float rage::anger() {
@@ -137,6 +164,7 @@ float rage::level() {
 }
 
 char const* rage::mood() {
+    if (s_armed) return "watching you";
     if (s_anger < 20.f) return "calm";
     if (s_anger < 40.f) return "irritated";
     if (s_anger < 60.f) return "angry";
@@ -146,5 +174,9 @@ char const* rage::mood() {
 
 std::string rage::eventNote() {
     if (!active()) return "";
+    if (s_armed) {
+        return " Your anger is at 100/100 and you've decided to strike at a moment they won't see coming."
+               " Keep it secret: sound calm, almost friendly, with only a hint that something is coming.";
+    }
     return fmt::format(" Your anger is now {}/100 ({}).", static_cast<int>(s_anger), mood());
 }

@@ -151,10 +151,10 @@ def hit():
     return [math.tanh(1.8 * s) for s in out]
 
 out_dir = sys.argv[1]
+# Only the chat talk sounds come from here now; Grin's scare and fight use
+# real CC0 recordings (tools/grin-voice)
 for name, gen, level in (
     ("blip", blip, 0.5), ("chirp", chirp, 0.5), ("soft", soft, 0.5),
-    ("roar", roar, 0.9), ("crack", crack, 0.8), ("shatter", shatter, 0.8),
-    ("shot", shot, 0.7), ("hit", hit, 0.8),
 ):
     write(f"{out_dir}/{name}.wav", gen(), level)
     print(name, "ok")

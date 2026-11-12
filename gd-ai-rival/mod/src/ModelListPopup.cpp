@@ -1,13 +1,58 @@
 #include "ModelListPopup.hpp"
 #include "Text.hpp"
 
+#include <algorithm>
+
 using namespace geode::prelude;
 
 namespace {
     constexpr float WIDTH = 320.f;
-    constexpr float HEIGHT = 260.f;
+    constexpr float HEIGHT = 270.f;
     const CCSize LIST_SIZE { 280.f, 180.f };
     constexpr float ROW_HEIGHT = 22.f;
+
+    struct BadgeStyle {
+        char const* text;
+        ccColor3B color;
+    };
+
+    BadgeStyle badgeStyle(providers::ModelBadge badge) {
+        using enum providers::ModelBadge;
+        switch (badge) {
+            case Recommended: return { "RECOMMENDED", { 70, 200, 95 } };
+            case Free: return { "FREE", { 60, 170, 230 } };
+            case Balanced: return { "BALANCED", { 225, 170, 50 } };
+            case Smartest: return { "SMARTEST", { 175, 100, 235 } };
+            case None: default: return { nullptr, { 0, 0, 0 } };
+        }
+    }
+
+    // Recommended first, then free ones, then the rest as the provider lists them
+    int sortRank(providers::ModelBadge badge) {
+        using enum providers::ModelBadge;
+        if (badge == Recommended) return 0;
+        if (badge == Free) return 1;
+        return 2;
+    }
+
+    // A small colored pill with the label, right-aligned in the row
+    CCNode* createBadge(BadgeStyle const& style) {
+        auto label = CCLabelBMFont::create(style.text, "bigFont.fnt");
+        label->setScale(.28f);
+        auto size = label->getScaledContentSize() + CCSize(10.f, 5.f);
+
+        auto pill = NineSlice::create("square02b_001.png");
+        pill->setColor(style.color);
+        pill->setScale(.3f);
+        pill->setContentSize(size / .3f);
+
+        auto node = CCNode::create();
+        node->setContentSize(size);
+        node->setAnchorPoint({ 1.f, .5f });
+        node->addChildAtPosition(pill, Anchor::Center);
+        node->addChildAtPosition(label, Anchor::Center, ccp(0, .5f));
+        return node;
+    }
 }
 
 ModelListPopup* ModelListPopup::create(Connection connection, Callback onPick) {
@@ -26,6 +71,11 @@ bool ModelListPopup::init(Connection connection, Callback onPick) {
     m_connection = std::move(connection);
     m_onPick = std::move(onPick);
     this->setTitle("Pick a Model");
+
+    auto legend = CCLabelBMFont::create("Recommended: fast and cheap, plenty for in-game chat", "chatFont.fnt");
+    legend->setScale(.5f);
+    legend->setColor({ 170, 230, 180 });
+    m_mainLayer->addChildAtPosition(legend, Anchor::Top, ccp(0, -40));
 
     auto listBG = NineSlice::create("square02b_001.png");
     listBG->setColor({ 0, 0, 0 });
@@ -56,6 +106,9 @@ bool ModelListPopup::init(Connection connection, Callback onPick) {
 void ModelListPopup::showModels(std::vector<std::string> models) {
     m_spinner->setVisible(false);
     m_models = std::move(models);
+    std::stable_sort(m_models.begin(), m_models.end(), [](std::string const& a, std::string const& b) {
+        return sortRank(providers::modelBadge(a)) < sortRank(providers::modelBadge(b));
+    });
 
     auto list = ScrollLayer::create(LIST_SIZE);
     list->m_contentLayer->setLayout(ScrollLayer::createDefaultListLayout(0.f));
@@ -70,7 +123,15 @@ void ModelListPopup::showModels(std::vector<std::string> models) {
         auto label = CCLabelBMFont::create(text::toDisplayable(model).c_str(), "chatFont.fnt");
         label->setAnchorPoint({ 0.f, .5f });
         label->setPosition({ 8.f, ROW_HEIGHT / 2 });
-        label->limitLabelWidth(LIST_SIZE.width - 16.f, .7f, .3f);
+        float labelSpace = LIST_SIZE.width - 16.f;
+        auto style = badgeStyle(providers::modelBadge(model));
+        if (style.text) {
+            auto badge = createBadge(style);
+            badge->setPosition({ LIST_SIZE.width - 8.f, ROW_HEIGHT / 2 });
+            rowContent->addChild(badge);
+            labelSpace -= badge->getContentWidth() + 8.f;
+        }
+        label->limitLabelWidth(labelSpace, .7f, .3f);
         if (model == m_connection.model) {
             label->setColor({ 120, 255, 140 });
         }

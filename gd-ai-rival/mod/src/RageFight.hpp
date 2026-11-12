@@ -66,6 +66,7 @@ protected:
     float m_chargeTime = 0.f;
     int m_chargeHits = 0;
     float m_tint = 0.f;
+    float m_lastGrunt = -10.f;
     float m_shakeTime = 0.f;
     float m_shakeStrength = 0.f;
 };

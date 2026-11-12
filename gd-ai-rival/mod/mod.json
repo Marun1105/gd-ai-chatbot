@@ -17,6 +17,7 @@
 	"resources": {
 		"files": [
 			"resources/sounds/*.wav",
+			"resources/sounds/*.ogg",
 			"resources/grin/*.png"
 		]
 	},
@@ -152,6 +153,13 @@
 			"name": "Screen Break",
 			"description": "When the bar fills up, the screen goes dark, Grin roars and smashes your screen from the inside, and it shatters. The level waits until it is over. No flashing lights, but it is a scare: turn it off if you don't want that.",
 			"default": true
+		},
+		"rage-sneak": {
+			"type": "bool",
+			"name": "Sneak Attack",
+			"description": "When the bar fills up, Grin doesn't strike right away. It waits, and at a random moment while you're playing one of your next attempts, the screen goes black. Turn off to have it strike the moment you die instead.",
+			"default": true,
+			"enable-if": "rage-jumpscare"
 		},
 		"rage-fight": {
 			"type": "bool",

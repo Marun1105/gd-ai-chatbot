@@ -141,7 +141,7 @@ bool RageFight::init(std::function<void(Result)> onDone) {
     this->addChild(hint, 5);
 
     this->refreshHud();
-    playSound("roar.wav"_spr, 1.15f, .8f);
+    playSound("grin-nowhere.ogg"_spr);
     this->runAction(CCSequence::create(
         CCDelayTime::create(.8f), CallFuncExt::create([this] { this->begin(); }), nullptr
     ));
@@ -162,7 +162,7 @@ void RageFight::begin() {
 void RageFight::shoot(CCPoint location) {
     if (m_state != State::Fight) return;
     auto local = this->convertToNodeSpace(location);
-    playSound("shot.wav"_spr, randomIn(.94f, 1.06f), .7f);
+    playSound("shot.ogg"_spr, randomIn(.94f, 1.06f), .7f);
     this->shakeScreen(2.f, .08f);
 
     // Where the shot lands
@@ -210,7 +210,12 @@ void RageFight::damageGrin(float amount, CCPoint where) {
         m_grinFlash->setOpacity(amount >= HEAD_DAMAGE ? 210 : 150);
         m_grinFlash->runAction(CCFadeOut::create(.12f));
     }
-    playSound("hit.wav"_spr, randomIn(.92f, 1.08f), .8f);
+    playSound("hit.ogg"_spr, randomIn(.92f, 1.08f), .8f);
+    // It grunts when it really hurts, but not on every single shot
+    if (amount >= HEAD_DAMAGE && m_time - m_lastGrunt > .7f) {
+        m_lastGrunt = m_time;
+        playSound("grin-hurt1.ogg"_spr, randomIn(.95f, 1.08f));
+    }
     this->sparks(where, ccc4f(1.f, .85f, .2f, 1.f), 7);
     this->refreshHud();
     if (m_grinHealth <= 0.f) this->win();
@@ -241,13 +246,14 @@ void RageFight::startCharge() {
     m_charging = true;
     m_chargeTime = 0.f;
     m_chargeHits = 0;
-    playSound("roar.wav"_spr, 1.3f, .55f);
+    playSound("grin-snarl.ogg"_spr, randomIn(.95f, 1.05f));
 }
 
 void RageFight::stagger() {
     m_charging = false;
     m_nextCharge = 2.f + 1.2f * (m_grinHealth / 100.f);
-    playSound("hit.wav"_spr, .75f, 1.f);
+    playSound("hit.ogg"_spr, .8f, 1.f);
+    playSound("grin-hurt2.ogg"_spr);
     this->shakeScreen(4.f, .15f);
     auto label = popText("KNOCKED BACK!", "bigFont.fnt", .45f, { 255, 230, 120 });
     label->setPosition(m_grin->getPosition() + CCPoint(0.f, m_win.height * .25f));
@@ -260,7 +266,7 @@ void RageFight::hurtPlayer() {
     m_charging = false;
     m_nextCharge = 2.f + 1.2f * (m_grinHealth / 100.f);
     m_playerHearts = std::max(0, m_playerHearts - 1);
-    playSound("crack.wav"_spr, .9f, 1.f);
+    playSound("crack.ogg"_spr, .9f, 1.f);
     this->shakeScreen(9.f, .3f);
     m_hurtFlash->stopAllActions();
     m_hurtFlash->setOpacity(130);
@@ -290,7 +296,8 @@ void RageFight::win() {
     m_state = State::Over;
     m_won = true;
     m_charging = false;
-    playSound("shatter.wav"_spr, .85f, 1.f);
+    playSound("grin-dies.ogg"_spr);
+    playSound("shatter.ogg"_spr, .85f, .8f);
     this->sparks(m_grin->getPosition() + CCPoint(0.f, m_grin->getScaledContentSize().height * .2f), ccc4f(1.f, .8f, .1f, 1.f), 40);
     m_grin->stopAllActions();
     m_grin->runAction(CCSpawn::create(
@@ -307,7 +314,7 @@ void RageFight::lose() {
     m_state = State::Over;
     m_won = false;
     m_charging = false;
-    playSound("roar.wav"_spr, .9f, 1.f);
+    playSound("roar.ogg"_spr, .95f, .8f);
     m_hurtFlash->stopAllActions();
     m_hurtFlash->runAction(CCFadeTo::create(.4f, 150));
 
@@ -323,7 +330,11 @@ void RageFight::lose() {
     auto label = popText("GRIN WINS", "goldFont.fnt", .9f, { 255, 80, 60 });
     label->setPosition({ m_win.width / 2, m_win.height * .15f });
     this->addChild(label, 7);
-    this->runAction(CCSequence::create(CCDelayTime::create(1.6f), CallFuncExt::create([this] { this->done(); }), nullptr));
+    // "Game over", in its own voice, once the roar dies down
+    this->runAction(CCSequence::create(
+        CCDelayTime::create(.7f), CallFuncExt::create([] { playSound("grin-gameover.ogg"_spr); }),
+        CCDelayTime::create(1.6f), CallFuncExt::create([this] { this->done(); }), nullptr
+    ));
 }
 
 void RageFight::done() {

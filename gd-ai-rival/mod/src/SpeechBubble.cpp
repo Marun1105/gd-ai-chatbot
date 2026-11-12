@@ -120,9 +120,9 @@ bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, S
     this->addChild(m_bg);
 
     if (hasAvatar) {
-        // Grin shows its own face (unless the player picked a drawing or their
-        // own icon), going redder the angrier it gets
-        if (profile.character == "grin" && look.avatar.mode == AvatarMode::Icon) {
+        // A character always shows its own face, never the cube or the pixel
+        // drawing; Grin's goes redder the angrier it gets
+        if (profile.character == "grin") {
             auto face = RageEvent::createFace(AVATAR_SIZE);
             float anger = rage::level();
             face->setColor({ 255, static_cast<GLubyte>(255 - 150 * anger), static_cast<GLubyte>(255 - 150 * anger) });
@@ -151,6 +151,19 @@ bool SpeechBubble::initBubble(Profile const& profile, std::string const& text, S
 
     m_soundFile = style == Style::Reply ? profile.soundFile : "";
     m_volume = std::clamp(profile.soundVolume, 0.f, 1.f);
+    // Grin has a real voice instead of typing blips: one snigger (or a growl
+    // when it's angry) as it starts to talk
+    if (profile.character == "grin") {
+        m_soundFile.clear();
+        if (style == Style::Reply && (!m_preview || m_animate)) {
+            float volume = static_cast<float>(Mod::get()->getSettingValue<int64_t>("rage-volume")) / 100.f * .6f;
+            if (volume > 0.f) {
+                FMODAudioEngine::get()->playEffect(
+                    rage::level() >= .6f ? "grin-talk-angry.ogg"_spr : "grin-talk-calm.ogg"_spr, 1.f, 0.f, volume
+                );
+            }
+        }
+    }
 
     float base = std::clamp(look.duration, 1.f, 20.f);
     float readTime = std::min(base + text.size() * .04f, base + 8.f);

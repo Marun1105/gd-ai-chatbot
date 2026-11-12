@@ -1,5 +1,6 @@
 #include "CustomSettings.hpp"
 #include "AvatarEditor.hpp"
+#include "GrinLook.hpp"
 #include "LookEditors.hpp"
 #include "Text.hpp"
 #include "TextEditorPopup.hpp"
@@ -14,6 +15,11 @@ namespace {
         auto sprite = ButtonSprite::create("Edit", "goldFont.fnt", "GJ_button_04.png", .8f);
         sprite->setScale(.55f);
         return CCMenuItemSpriteExtra::create(sprite, target, selector);
+    }
+
+    // A character with its own face (Grin) replaces the icon settings
+    bool characterHasFace() {
+        return Mod::get()->getSettingValue<std::string>("personality-preset") == "Grin";
     }
 
     // Shorten text with "..." until the label fits in maxWidth
@@ -63,9 +69,11 @@ protected:
 
         auto look = this->getValue();
         if (m_preview) m_preview->removeFromParent();
-        m_preview = avatar::create(look, 30.f);
+        // With Grin picked, its face is the icon: no cube, no pixel drawing
+        bool grin = characterHasFace() && look.mode != AvatarMode::Off;
+        m_preview = grin ? grin_look::sprite(grin_look::Pose::Icon, 32.f) : avatar::create(look, 30.f);
         if (m_preview) this->addChildAtPosition(m_preview, Anchor::Right, ccp(-78, 0));
-        m_modeLabel->setString(avatar::modeName(look.mode));
+        m_modeLabel->setString(grin ? "Grin's face" : avatar::modeName(look.mode));
 
         bool enable = this->getSetting()->shouldEnable();
         m_editButton->setEnabled(enable);
@@ -74,6 +82,22 @@ protected:
 
     void onEdit(CCObject*) {
         Ref<AvatarSettingNode> self = this;
+        if (characterHasFace()) {
+            createQuickPopup(
+                "Grin's Face",
+                "While <cy>Grin</c> is your personality, the chat shows <cg>Grin's own face</c> instead of an icon.\n"
+                "Change it under <cy>Grin's Look</c>, or open the icon editor for your other personalities.",
+                "OK", "Icon Editor",
+                [self](auto, bool iconEditor) {
+                    if (!iconEditor) return;
+                    AvatarEditor::create(self->getValue(), [self](AvatarLook const& look) {
+                        self->setValue(look, nullptr);
+                        self->commit();
+                    })->show();
+                }
+            );
+            return;
+        }
         AvatarEditor::create(this->getValue(), [self](AvatarLook const& look) {
             self->setValue(look, nullptr);
             // The editor has its own Save button, so don't wait for "Apply"

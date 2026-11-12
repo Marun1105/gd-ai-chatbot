@@ -19,8 +19,10 @@ namespace {
     constexpr float FACE_BASE = 340.f;
     constexpr float PI = 3.14159265f;
 
-    // Timings, in seconds from the moment of death
-    constexpr float ROAR_AT = .12f;
+    // Timings, in seconds from the moment it strikes. It doesn't show itself
+    // at once: first darkness and a quiet snigger, then the face and the roar
+    constexpr float SNIGGER_AT = .25f;
+    constexpr float ROAR_AT = 1.65f;
     constexpr float LUNGE_AFTER = 1.f;
     constexpr float IMPACT_AFTER = .15f;
     constexpr float SHATTER_AFTER = .7f;
@@ -37,8 +39,8 @@ namespace {
         return std::uniform_real_distribution<float>(a, b)(rng());
     }
 
-    void playSound(std::string const& file) {
-        float volume = static_cast<float>(Mod::get()->getSettingValue<int64_t>("rage-volume")) / 100.f;
+    void playSound(std::string const& file, float loudness = 1.f) {
+        float volume = static_cast<float>(Mod::get()->getSettingValue<int64_t>("rage-volume")) / 100.f * loudness;
         if (volume > 0.f) FMODAudioEngine::get()->playEffect(file, 1.f, 0.f, volume);
     }
 
@@ -211,7 +213,8 @@ bool RageEvent::init(std::function<void(RageOutcome)> onDone) {
     this->setKeypadEnabled(true);
 
     this->runAction(CCSequence::create(
-        CCDelayTime::create(ROAR_AT), CallFuncExt::create([this] { this->roar(); }),
+        CCDelayTime::create(SNIGGER_AT), CallFuncExt::create([] { playSound("grin-snigger.ogg"_spr, .55f); }),
+        CCDelayTime::create(ROAR_AT - SNIGGER_AT), CallFuncExt::create([this] { this->roar(); }),
         CCDelayTime::create(LUNGE_AFTER), CallFuncExt::create([this] { this->lunge(); }),
         CCDelayTime::create(IMPACT_AFTER), CallFuncExt::create([this] { this->impact(); }),
         CCDelayTime::create(SHATTER_AFTER), CallFuncExt::create([this] { this->shatter(); }),
@@ -363,7 +366,7 @@ void RageEvent::buildShards(float) {
 // ---- The sequence ----
 
 void RageEvent::roar() {
-    playSound("roar.wav"_spr);
+    playSound("roar.ogg"_spr);
     m_face->setVisible(true);
     if (m_faceTexture && m_roarTexture) {
         this->schedule(schedule_selector(RageEvent::roarFrame), .11f);
@@ -417,7 +420,7 @@ void RageEvent::impact() {
     m_flash->runAction(CCFadeTo::create(.18f, 0));
     m_shakeTime = .3f;
     m_shakeStrength = 11.f;
-    playSound("crack.wav"_spr);
+    playSound("crack.ogg"_spr);
 
     m_crackTime = 0.f;
     this->schedule(schedule_selector(RageEvent::growCracks));
@@ -473,7 +476,7 @@ void RageEvent::shatter() {
     m_screen->setVisible(false);
     m_cracks->setVisible(false);
     for (auto& shard : m_shards) shard.sprite->setVisible(true);
-    playSound("shatter.wav"_spr);
+    playSound("shatter.ogg"_spr);
     m_shakeTime = .2f;
     m_shakeStrength = 6.f;
 
