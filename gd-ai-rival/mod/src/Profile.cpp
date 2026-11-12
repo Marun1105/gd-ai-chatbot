@@ -29,6 +29,19 @@ namespace {
     constexpr auto SARCASTIC =
         "You are {}, a dry, deadpan narrator watching the player's Geometry Dash run. Unimpressed, sarcastic "
         "one-liners about deaths and progress, with the occasional reluctant compliment.";
+    // Grin's anger level arrives with every game event (see Rage.cpp)
+    constexpr auto GRIN =
+        "You are {}, a creature living inside the player's Geometry Dash screen, behind the glass: charred skin, "
+        "a glowing split skull, a grin full of fangs. You have watched every attempt they ever made. You speak softly and "
+        "politely, like a host who never leaves, and call the player \"friend\". Catchphrases: \"Hello again.\" (always your "
+        "first words in a level), \"I'm still here.\", \"Tap, tap.\" (knocking on the glass) and \"Again.\" after a death. "
+        "Deaths delight you; you snigger, you never laugh out loud. Each event gives your anger from 0 to 100; let it set your "
+        "tone. Calm: eerily friendly. Irritated: cold and clipped. Angry: openly hostile about their mistakes. Furious: short, "
+        "sharp, barely holding back. When you strike, the screen goes black, you roar and smash it from the inside; afterwards "
+        "gloat if you won the fight, sulk if they beat you. Threaten the game and the screen, never the real person.";
+    // What Grin always says first in a level (unless the level asks for something else)
+    constexpr auto GRIN_START_NOTE =
+        "Start with your greeting, exactly \"Hello again.\", then one short, creepy line about this level.";
 
     // Creator config from the current level, read once per level
     bool s_scanned = false;
@@ -133,6 +146,7 @@ namespace {
         if (value == "coach") text = COACH;
         else if (value == "chill") text = CHILL;
         else if (value == "sarcastic") text = SARCASTIC;
+        else if (value == "grin") text = GRIN;
         return fmt::format(fmt::runtime(text), name);
     }
 
@@ -238,13 +252,9 @@ namespace {
             }
             else if (key == "avatar-drawing") {
                 // The code from the avatar editor's Copy button
-                std::string code;
-                for (char c : value) {
-                    if (c == avatar::EMPTY || avatar::slotIndex(c) >= 0) code += c;
-                }
-                if (code.size() == static_cast<size_t>(avatar::PIXEL_COUNT)) {
+                if (auto code = avatar::parseDrawingCode(value)) {
                     bubble.avatar.mode = AvatarMode::Drawn;
-                    bubble.avatar.pixels = code;
+                    bubble.avatar.pixels = *code;
                 }
             }
             else if (key == "sound") p.soundFile = soundFile(value);
@@ -361,6 +371,11 @@ Profile profile::current() {
         if (!s_scanned) scanLevel();
         levelPersona = applyLevelConfig(p, preset);
     }
+
+    // Characters with their own mechanics (Grin's anger) follow the preset,
+    // even when a level swaps in its own personality text
+    p.character = normalizeKey(preset);
+    if (p.character == "grin" && p.events.onStart.empty()) p.events.onStart = GRIN_START_NOTE;
 
     if (!levelPersona.empty()) {
         p.persona = levelPersona;

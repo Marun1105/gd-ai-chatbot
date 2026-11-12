@@ -17,9 +17,9 @@ namespace {
     constexpr auto PROVIDERS = std::to_array<Provider>({
         {
             .id = "anthropic", .name = "Claude (Anthropic)", .format = ApiFormat::Anthropic,
-            .defaultUrl = "https://api.anthropic.com", .defaultModel = "claude-sonnet-5-5",
+            .defaultUrl = "https://api.anthropic.com", .defaultModel = "claude-haiku-5-5",
             .keyUrl = "https://console.anthropic.com/settings/keys",
-            .note = "Paid, pay as you go: about $0.003 per message on Sonnet 5.5. Create a key in the Claude Console.",
+            .note = "Paid, pay as you go: a few cents per thousand messages on Haiku 5.5. Create a key in the Claude Console.",
             .tokenParam = "", .needsKey = true, .urlEditable = false, .free = false,
         },
         {
@@ -358,4 +358,19 @@ Result<std::vector<std::string>, std::string> providers::parseModels(Connection 
         return Err(fmt::format("{} didn't list any chat models.", connection.provider->name));
     }
     return Ok(std::move(models));
+}
+
+providers::ModelBadge providers::modelBadge(std::string_view model) {
+    auto name = utils::string::toLower(std::string(model));
+    auto has = [&](std::string_view part) { return name.find(part) != std::string::npos; };
+
+    if (has(":free") || name == "openrouter/free") return ModelBadge::Free;
+    // Fast and cheap: plenty for short in-game replies
+    if (has("haiku") || has("flash") || has("-mini") || has("-nano") || has("instant")
+        || (has("grok") && has("fast"))) {
+        return ModelBadge::Recommended;
+    }
+    if (has("sonnet")) return ModelBadge::Balanced;
+    if (has("opus") || has("fable") || has("mythos") || has("-pro")) return ModelBadge::Smartest;
+    return ModelBadge::None;
 }

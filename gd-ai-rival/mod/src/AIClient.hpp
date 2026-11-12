@@ -49,7 +49,11 @@ public:
 
     void onLevelStart();
     // situation: what the player was doing, e.g. "in the wave, 2x speed"
-    void onDeath(int percent, int attempt, bool practice, std::string const& situation);
+    // silent: keep count (best, death spots) but don't comment, e.g. while
+    // Grin's screen-break plays and gets its own comment afterwards
+    void onDeath(int percent, int attempt, bool practice, std::string const& situation, bool silent = false);
+    // Grin just smashed the screen (and maybe the player fought it)
+    void onRage(bool fought, bool won);
     void onComplete(int attempt, bool practice);
 
     bool isWaiting() const;

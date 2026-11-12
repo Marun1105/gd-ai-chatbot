@@ -76,20 +76,37 @@ jobs:
         id: notes
         if: ${{ inputs.release }}
         run: |
-          version=$(jq -r .version src/gd-ai-rival/mod/mod.json)
-          geode=$(jq -r .geode src/gd-ai-rival/mod/mod.json)
-          gd=$(jq -r .gd.android src/gd-ai-rival/mod/mod.json)
+          mod=src/gd-ai-rival/mod
+          version=$(jq -r .version $mod/mod.json)
+          geode=$(jq -r .geode $mod/mod.json)
+          gd=$(jq -r .gd.android $mod/mod.json)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           {
-            echo "For **Geometry Dash $gd** with **Geode $geode**, on Android and Windows."
+            echo "**AI Rival** is an AI companion for Geometry Dash. It watches your attempts, reacts to deaths, new bests and completions in a speech bubble, and lets you chat with it without leaving the level. It runs on your own API key, with free options available."
             echo
-            echo "### Install"
-            echo "1. Download **marun1105.ai-rival.geode** below."
-            echo "2. Put it in Geode's \`mods\` folder: on Windows \`<GD folder>/geode/mods\`, on Android \`Android/media/com.geode.launcher/game/geode/mods\`."
-            echo "3. Restart the game, open the mod's settings and press **Set Up** under AI Connection."
+            echo "### Compatibility"
             echo
-            echo "### Changes"
-            awk '/^# /{n++; next} n==1' src/gd-ai-rival/mod/changelog.md
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Geometry Dash | $gd |"
+            echo "| Geode | $geode |"
+            echo "| Platforms | Android, Windows |"
+            echo
+            echo "### Installation"
+            echo
+            echo "1. Download **\`marun1105.ai-rival.geode\`** from the assets below."
+            echo "2. Copy it into Geode's mods folder:"
+            echo "   - **Windows:** \`<Geometry Dash folder>/geode/mods\`"
+            echo "   - **Android:** \`Android/media/com.geode.launcher/game/geode/mods\`"
+            echo "3. Restart Geometry Dash, open the mod's settings and select **Set Up** under *AI Connection*."
+            echo
+            echo "### What's new"
+            echo
+            awk '/^# /{n++; next} n==1 && NF' $mod/changelog.md
+            echo
+            echo "### Privacy and usage"
+            echo
+            echo "Your API key is stored only on your device and is sent only to the provider you choose. A daily message limit, set to 200 by default, keeps usage and cost under control."
           } > release-notes.md
 
       - uses: softprops/action-gh-release@v2

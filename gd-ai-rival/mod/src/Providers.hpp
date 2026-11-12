@@ -80,6 +80,10 @@ namespace providers {
         Connection const& connection, geode::utils::web::WebResponse const& response, size_t maxChars = 220
     );
 
+    // A label for the model list, guessed from the model's name
+    enum class ModelBadge { None, Recommended, Free, Balanced, Smartest };
+    ModelBadge modelBadge(std::string_view model);
+
     bool canListModels(Connection const& connection);
     geode::utils::web::WebFuture listModels(Connection const& connection);
     geode::Result<std::vector<std::string>, std::string> parseModels(

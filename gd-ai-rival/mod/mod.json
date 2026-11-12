@@ -16,7 +16,9 @@
 	],
 	"resources": {
 		"files": [
-			"resources/sounds/*.wav"
+			"resources/sounds/*.wav",
+			"resources/sounds/*.ogg",
+			"resources/grin/*.png"
 		]
 	},
 	"settings": {
@@ -60,13 +62,14 @@
 		"personality-preset": {
 			"type": "string",
 			"name": "Personality",
-			"description": "<cy>Rival</c>: cocky trash talk. <cy>Coach</c>: hype and tips. <cy>Chill</c>: laid-back friend. <cy>Sarcastic</c>: deadpan narrator. <cy>Custom</c>: write your own below.",
+			"description": "<cy>Rival</c>: cocky trash talk. <cy>Coach</c>: hype and tips. <cy>Chill</c>: laid-back friend. <cy>Sarcastic</c>: deadpan narrator. <cy>Grin</c>: a creepy creature living in your screen that gets angrier every time you die, and smashes your screen when it snaps (see <cy>Grin</c> below). <cy>Custom</c>: write your own below.",
 			"default": "Rival",
 			"one-of": [
 				"Rival",
 				"Coach",
 				"Chill",
 				"Sarcastic",
+				"Grin",
 				"Custom"
 			]
 		},
@@ -106,6 +109,75 @@
 			"control": {
 				"slider": true,
 				"slider-step": 1
+			}
+		},
+		"grin-title": {
+			"type": "title",
+			"name": "Grin",
+			"description": "Only used when Personality is Grin."
+		},
+		"grin-picture": {
+			"type": "file",
+			"name": "Grin's Look",
+			"description": "Grin is a 3D creature by default. Pick any <cy>PNG or JPG</c> on your device to use your own picture instead: it becomes the face that smashes your screen, the face on the anger bar and in chat, and the enemy in the fight (tap the middle of it for extra damage). Square pictures work best. Use the reset arrow to go back to the 3D Grin.",
+			"default": "Default 3D Grin",
+			"control": {
+				"dialog": "open",
+				"filters": [
+					{
+						"files": ["*.png", "*.jpg", "*.jpeg"],
+						"description": "Pictures"
+					}
+				]
+			}
+		},
+		"rage-bar": {
+			"type": "bool",
+			"name": "Anger Bar",
+			"description": "Shows how angry Grin is in the top-left corner of the level. Deaths fill it: a 1% death on your first tries barely counts, a 90%+ death on an extreme demon counts a lot, and dying at the same spot again and again counts more each time. New bests calm it down a little and beating the level calms it completely.",
+			"default": true
+		},
+		"rage-temper": {
+			"type": "string",
+			"name": "Temper",
+			"description": "How fast Grin gets angry. <cy>Patient</c> takes much longer to snap, <cy>Short Fuse</c> snaps quickly.",
+			"default": "Normal",
+			"one-of": [
+				"Patient",
+				"Normal",
+				"Short Fuse"
+			]
+		},
+		"rage-jumpscare": {
+			"type": "bool",
+			"name": "Screen Break",
+			"description": "When the bar fills up, the screen goes dark, Grin roars and smashes your screen from the inside, and it shatters. The level waits until it is over. No flashing lights, but it is a scare: turn it off if you don't want that.",
+			"default": true
+		},
+		"rage-sneak": {
+			"type": "bool",
+			"name": "Sneak Attack",
+			"description": "When the bar fills up, Grin doesn't strike right away. It waits, and at a random moment while you're playing one of your next attempts, the screen goes black. Turn off to have it strike the moment you die instead.",
+			"default": true,
+			"enable-if": "rage-jumpscare"
+		},
+		"rage-fight": {
+			"type": "bool",
+			"name": "Fight Back",
+			"description": "After the screen breaks, fight Grin in a short mini-game inside your broken screen: tap Grin to hit it (the head hurts more) and shoot it enough to stop its charges before they reach you. Win and its anger drops to zero; lose and it stays angry.",
+			"default": true,
+			"enable-if": "rage-jumpscare"
+		},
+		"rage-volume": {
+			"type": "int",
+			"name": "Roar Volume",
+			"description": "Loudness of the roar and the breaking glass.",
+			"default": 80,
+			"min": 0,
+			"max": 100,
+			"control": {
+				"slider": true,
+				"slider-step": 5
 			}
 		},
 		"controls-title": {
@@ -324,7 +396,7 @@
 		"avatar": {
 			"type": "custom:avatar",
 			"name": "Icon",
-			"description": "The icon next to the AI's name. Tap <cy>Edit</c> to pick a cube and colors from the icon kit, draw your own 16x16 icon, copy your own icon, or turn it off.",
+			"description": "The icon next to the AI's name. Tap <cy>Edit</c> to pick a cube and colors from the icon kit, draw your own pixel icon (8 to 32 squares per side), copy your own icon, or turn it off.",
 			"default": {
 				"mode": "icon",
 				"icon": 1,

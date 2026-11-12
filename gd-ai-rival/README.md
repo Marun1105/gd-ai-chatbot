@@ -65,11 +65,11 @@ Open the mod's settings and press **Set Up** next to *AI Connection* (or, in a l
 1. Use the arrows to pick a provider. Each one shows **FREE** or **PAID** and a short note.
 2. Press **Get Key**, create a key on the provider's site and copy it.
 3. Press **Paste**, then **Test**. A reply in green means it works.
-4. Optional: press **List** to pick another model from the provider's live model list.
+4. Optional: press **List** to pick another model from the provider's live model list. Models are labeled RECOMMENDED (fast and cheap, listed first), FREE, BALANCED or SMARTEST.
 
 | Provider | Cost | Default model |
 |---|---|---|
-| Claude (Anthropic) | Paid, ~$0.003/message | `claude-sonnet-5-5` |
+| Claude (Anthropic) | Paid, ~$0.0002/message | `claude-haiku-5-5` |
 | ChatGPT (OpenAI) | Paid | `gpt-5.6` |
 | Gemini (Google) | **Free tier** (rate limited) | `gemini-flash-latest` |
 | Grok (xAI) | Paid (trial credits sometimes) | `grok-4.5` |
@@ -92,11 +92,12 @@ Everything is in Geode → AI Rival → Settings, grouped into sections:
 | Section | What you can change |
 |---|---|
 | Connection | AI Connection screen, Daily Message Limit (default 200, `0` = none) |
-| Character | Name, Personality (Rival, Coach, Chill, Sarcastic, Custom), custom personality text (big editor with paste and examples, up to 1000 characters), Reply Length (Very Short / Short / Medium), Memory Size |
+| Character | Name, Personality (Rival, Coach, Chill, Sarcastic, Grin, Custom), custom personality text (big editor with paste and examples, up to 1000 characters), Reply Length (Very Short / Short / Medium), Memory Size |
+| Grin | Grin's Look (the 3D Grin, or any PNG/JPG on your device: used for the scare, the anger bar, the chat bubble and the fight), Anger bar (fills with every death, weighted by how far you got, the level's difficulty and repeat death spots; calms on new bests), Temper (Patient / Normal / Short Fuse), Screen Break (when it snaps: darkness and a quiet snigger, then its face, a real roar, and your screen cracks and shatters), Sneak Attack (on by default: once the bar is full it strikes at a random moment while you play a later attempt, not when you expect it), Fight Back (then fight it in a short mini-game inside your broken screen: tap it to shoot, knock back its charges; win and it calms down completely), Roar Volume |
 | Controls | Open Chat keybind (PC, default `T`), In-Game Chat Button (on for phones) |
 | Game Reactions | Master switch, each reaction on or off (start, deaths, close calls, new bests, completion), close call range, death cooldown and chance, practice mode, and a custom direction for each moment ("give me a tip instead of roasting me") |
 | Speech Bubble | **Bubble Designer** with a live preview: drag the bubble around a mini game screen (it snaps to the nearest of 6 spots), width, font, text size, how long it stays, letter-by-letter text, color themes or any colors with transparency, talking sound and volume, and a close-up that replays the reply with its voice |
-| Icon | Avatar editor with a live bubble preview: pick a cube, colors and glow from the icon kit, draw your own 16x16 icon (pen, fill, mirror, undo, shareable code), use your own icon, or none |
+| Icon | Avatar editor with a live bubble preview: pick a cube, colors and glow from the icon kit, draw your own pixel icon with 8 to 32 squares per side (pen, fill, mirror, undo, shareable code), use your own icon, or none |
 | Chat Window | Theme (classic GD or a color from presets or a picker) and size, with a live copy of the window |
 | Levels | Let levels customize the AI, and the optional level lock |
 
@@ -166,3 +167,13 @@ Local development: `cp .dev.vars.example .dev.vars`, add your key, then `npm run
 | No reactions on deaths | Auto Reactions is off, you're in practice mode, the cooldown or chance skipped it, or the level lock excludes the level. |
 
 Notes: replies are English-only by design, since GD's built-in fonts can't draw non-ASCII text. Memory is per level and resets when you leave it.
+
+## Credits
+
+Grin's 3D model: "3D Horror Game Monster" by HorrorGameMaker.com, CC0, from
+https://opengameart.org/content/3d-horror-game-monster. How its pictures are
+rendered is in `tools/grin3d/README.md`.
+
+Grin's voice and the scare's sounds are CC0 recordings from OpenGameArt by Tim
+Rockk, trazzz123, Vinrax, Till Behrend and rubberduck; sources and the build
+script are in `tools/grin-voice/`.

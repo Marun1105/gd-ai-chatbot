@@ -59,6 +59,8 @@ struct Profile {
     bool chatCustomColor = false;
     cocos2d::ccColor3B chatColor { 40, 40, 90 };
     bool chatLarge = false;
+    // Preset key: "rival", "coach", "chill", "sarcastic", "grin" or "custom"
+    std::string character;
     // True when the current level changed anything
     bool fromLevel = false;
 };

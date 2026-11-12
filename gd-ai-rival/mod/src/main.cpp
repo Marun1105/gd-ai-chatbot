@@ -1,4 +1,5 @@
 #include <Geode/Geode.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 
@@ -6,10 +7,23 @@
 #include "ChatPopup.hpp"
 #include "ConnectionPopup.hpp"
 #include "GameInfo.hpp"
+#include "Rage.hpp"
+#include "RageBar.hpp"
+#include "RageEvent.hpp"
+
+#include <random>
 
 using namespace geode::prelude;
 
 namespace {
+    // The level stands still while Grin has the screen after a sneak attack
+    bool g_levelFrozen = false;
+
+    float randomIn(float a, float b) {
+        static std::mt19937 gen(std::random_device{}());
+        return std::uniform_real_distribution<float>(a, b)(gen);
+    }
+
     bool isLevelAllowed(int levelID) {
         if (!Mod::get()->getSettingValue<bool>("level-lock")) return true;
 
@@ -64,6 +78,14 @@ class $modify(AIPlayLayer, PlayLayer) {
         bool active = false;
         // destroyPlayer can fire more than once per death (dual mode)
         bool deathReported = false;
+        RageBar* rageBar = nullptr;
+        // GD tried to restart while Grin was smashing the screen
+        bool resetPending = false;
+        // Sneak Attack: how long you've been alive this attempt, and when it
+        // strikes (seconds into the attempt, picked once it's waiting)
+        float aliveTime = 0.f;
+        float strikeAt = -1.f;
+        bool sneakStrike = false;
     };
 
     bool init(GJGameLevel* level, bool dontCreateObjects) {
@@ -87,7 +109,64 @@ class $modify(AIPlayLayer, PlayLayer) {
         });
         client.onLevelStart();
         this->addChatButton();
+        rage::startLevel(level, m_isPlatformer);
+        this->addRageBar();
+        g_levelFrozen = false;
+        if (rage::active()) this->schedule(schedule_selector(AIPlayLayer::watchForStrike));
         return true;
+    }
+
+    void watchForStrike(float dt) {
+        // Sneak Attack: once its anger is full, Grin waits and strikes at a
+        // random moment of a later attempt, right in the middle of playing
+        if (!rage::armed() || RageEvent::isActive() || m_isPaused || m_hasCompletedLevel
+            || m_levelEndAnimationStarted || !m_player1 || m_player1->m_isDead) return;
+        if (m_fields->strikeAt < 0.f) m_fields->strikeAt = randomIn(1.5f, 7.f);
+        m_fields->aliveTime += dt;
+        if (m_fields->aliveTime >= m_fields->strikeAt) this->sneakAttack();
+    }
+
+    void sneakAttack() {
+        rage::disarm();
+        m_fields->strikeAt = -1.f;
+        m_fields->sneakStrike = true;
+        // Freeze the run where it is, music and all
+        g_levelFrozen = true;
+        FMODAudioEngine::get()->pauseAllMusic(true);
+        RageEvent::play([](RageOutcome outcome) {
+            if (auto playLayer = static_cast<AIPlayLayer*>(PlayLayer::get())) playLayer->rageFinished(outcome);
+        });
+    }
+
+    void addRageBar() {
+        // Grin's anger bar, top-left. Created even when hidden: it also lets
+        // the anger cool down while you play.
+        if (!rage::active() || !m_uiLayer) return;
+        auto bar = RageBar::create();
+        auto winSize = CCDirector::get()->getWinSize();
+        bar->setPosition({ 8.f, winSize.height - 6.f });
+        bar->setVisible(Mod::get()->getSettingValue<bool>("rage-bar"));
+        m_uiLayer->addChild(bar, 10);
+        m_fields->rageBar = bar;
+    }
+
+    void rageFinished(RageOutcome outcome) {
+        // Beating Grin calms it completely; losing keeps it seething
+        rage::afterSnap(outcome.fought ? (outcome.won ? 0.f : 60.f) : 35.f);
+        if (m_fields->rageBar) m_fields->rageBar->refresh();
+        if (m_fields->sneakStrike) {
+            // It got you mid-run: that attempt is over
+            m_fields->sneakStrike = false;
+            m_fields->resetPending = false;
+            g_levelFrozen = false;
+            FMODAudioEngine::get()->resumeAllMusic();
+            this->resetLevel();
+        }
+        else if (m_fields->resetPending) {
+            m_fields->resetPending = false;
+            this->resetLevel();
+        }
+        AIClient::get().onRage(outcome.fought, outcome.won);
     }
 
     void addChatButton() {
@@ -127,31 +206,65 @@ class $modify(AIPlayLayer, PlayLayer) {
         if (!player || !player->m_isDead || m_fields->deathReported) return;
 
         m_fields->deathReported = true;
-        AIClient::get().onDeath(
-            m_isPlatformer ? 0 : this->getCurrentPercentInt(),
-            m_attempts,
-            m_isPracticeMode || m_isTestMode,
-            gameinfo::situation(player, m_gameState.m_isDualMode)
-        );
+        int percent = m_isPlatformer ? 0 : this->getCurrentPercentInt();
+        auto situation = gameinfo::situation(player, m_gameState.m_isDualMode);
+
+        bool snapped = false;
+        if (rage::active()) {
+            auto result = rage::onDeath(percent, m_attempts, m_isPracticeMode, m_isTestMode);
+            if (m_fields->rageBar) m_fields->rageBar->refresh(result.gained > 0.f);
+            snapped = result.snapped;
+        }
+
+        // The screen break gets its own comment once it's over
+        AIClient::get().onDeath(percent, m_attempts, m_isPracticeMode || m_isTestMode, situation, snapped);
+        if (snapped) {
+            RageEvent::play([](RageOutcome outcome) {
+                if (auto playLayer = static_cast<AIPlayLayer*>(PlayLayer::get())) playLayer->rageFinished(outcome);
+            });
+        }
     }
 
     void resetLevel() {
+        // Hold the restart while Grin smashes the screen, or the next attempt
+        // would start (and probably end) behind the dark overlay
+        if (RageEvent::isActive()) {
+            m_fields->resetPending = true;
+            return;
+        }
         PlayLayer::resetLevel();
         m_fields->deathReported = false;
+        // A fresh attempt: a new moment to strike, if it's waiting
+        m_fields->aliveTime = 0.f;
+        m_fields->strikeAt = -1.f;
     }
 
     void levelComplete() {
         PlayLayer::levelComplete();
+        if (m_fields->active && rage::active()) {
+            rage::onComplete();
+            if (m_fields->rageBar) m_fields->rageBar->refresh();
+        }
         if (m_fields->active) {
             AIClient::get().onComplete(m_attempts, m_isPracticeMode || m_isTestMode);
         }
     }
 
     void onQuit() {
+        g_levelFrozen = false;
         if (m_fields->active) {
             AIClient::get().endLevel();
+            rage::endLevel();
         }
         PlayLayer::onQuit();
+    }
+};
+
+class $modify(AIGameLayer, GJBaseGameLayer) {
+    void update(float dt) {
+        // Grin has the screen: the run underneath waits, exactly where it was
+        if (g_levelFrozen && static_cast<GJBaseGameLayer*>(PlayLayer::get()) == this) return;
+        GJBaseGameLayer::update(dt);
     }
 };
 
