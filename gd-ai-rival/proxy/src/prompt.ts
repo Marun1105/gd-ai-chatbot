@@ -12,7 +12,8 @@ const GD_PRIMER = `Geometry Dash background:
 - Difficulty from easiest: Auto (plays itself, no input), Easy, Normal, Hard, Harder, Insane, then Demons: Easy, Medium, Hard, Insane, Extreme. Stars show the official rating; Featured, Epic, Legendary and Mythic mark standout quality. Unrated levels have no official difficulty.
 - Use what you know about famous levels, creators and community history when you recognise them, but the level facts below always win: a level named after a famous one is often a copy, a remake or a joke version, so check its creator and difficulty before assuming. Never invent details about a level you don't actually know.`;
 
-export function buildSystemPrompt(persona: string, level = ""): string {
+// powers: what the character can do to the game (the mod's Haunt.cpp), appended as-is
+export function buildSystemPrompt(persona: string, level = "", powers = ""): string {
   const levelSection = level ? `\nThe level being played right now:\n${level}\n` : "";
   return `You are an AI character inside the video game Geometry Dash, watching one player attempt a level in real time.
 
@@ -31,12 +32,16 @@ How to reply:
 - If the player asks about something unrelated to the game, answer briefly and in character.
 
 Character description:
-${persona}`;
+${persona}${powers ? "\n\n" + powers : ""}`;
 }
 
 // GD's bitmap fonts only contain printable ASCII, and the bubble is small.
 export function cleanReply(text: string): string {
+  // The character's [DO: ...] command lines come off first and go back on
+  // untrimmed at the end; the mod runs them and never shows them
+  const commands = (text.match(/\[do[: ][^\]]*\]/gi) ?? []).join(" ").replace(/[^\x20-\x7E]/g, "").slice(0, 200);
   let reply = text
+    .replace(/\[do[: ][^\]]*\]/gi, " ")
     .replace(/[‘’‚′]/g, "'")
     .replace(/[“”„″]/g, '"')
     .replace(/[–—−]/g, "-")
@@ -57,5 +62,6 @@ export function cleanReply(text: string): string {
       ? cut.slice(0, lastSentenceEnd + 1)
       : cut.replace(/\s+\S*$/, "") + "...";
   }
+  if (commands) reply = `${reply || "..."} ${commands}`;
   return reply;
 }

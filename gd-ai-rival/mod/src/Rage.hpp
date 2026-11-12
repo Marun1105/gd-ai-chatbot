@@ -34,6 +34,10 @@ namespace rage {
     // After the screen break: still annoyed (or calm, if the player beat it)
     void afterSnap(float anger);
 
+    // The AI playing Grin sets its own anger; reaching the limit means it
+    // strikes mid-attempt (when the screen break is allowed)
+    void set(float anger);
+
     // Waiting for the right moment to strike (Sneak Attack)
     bool armed();
     // It struck: no longer waiting
@@ -42,7 +46,7 @@ namespace rage {
     float anger();
     // 0..1 for the bar
     float level();
-    // "calm", "irritated", "angry", "furious", "about to snap"
+    // What the bar means right now: "watching", "knocking", "cracking your screen"...
     char const* mood();
     // Appended to game events for the AI: " Your anger is now 72/100 (furious)."
     std::string eventNote();

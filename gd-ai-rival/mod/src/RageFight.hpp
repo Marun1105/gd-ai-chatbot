@@ -46,6 +46,9 @@ protected:
     void stagger();
     void dash();
     void throwShard();
+    void darken();
+    // The next attack from the AI's plan
+    void planMove();
     void updateShards(float dt);
     bool shootShard(cocos2d::CCPoint local);
     void hurtPlayer(cocos2d::CCPoint where);
@@ -115,6 +118,13 @@ protected:
     // How big the charge looks; it eases back instead of snapping
     float m_chargeLook = 0.f;
     int m_chargeHits = 0;
+
+    // Following the AI's plan: which attack is next, and when
+    size_t m_planIndex = 0;
+    float m_nextMove = 1.2f;
+    bool m_feint = false;
+    float m_darkTime = 0.f;
+    cocos2d::CCLayerColor* m_darkness = nullptr;
 
     float m_nextShard = 1.2f;
     std::vector<Shard> m_shards;

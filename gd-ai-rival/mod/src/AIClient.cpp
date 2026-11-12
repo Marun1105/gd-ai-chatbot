@@ -1,6 +1,7 @@
 #include "AIClient.hpp"
 #include "Rage.hpp"
 #include "GameInfo.hpp"
+#include "Haunt.hpp"
 #include "Prompt.hpp"
 #include "SpeechBubble.hpp"
 #include "Text.hpp"
@@ -18,6 +19,12 @@ namespace {
 
     int64_t intSetting(std::string_view key) {
         return Mod::get()->getSettingValue<int64_t>(key);
+    }
+
+    // Grin's state for the AI playing it: its anger bar and what it has done
+    std::string grinNote() {
+        if (!rage::active()) return "";
+        return rage::eventNote() + haunt::takeLog();
     }
 
     // A creator's or player's direction for how to react, after the event report
@@ -117,7 +124,7 @@ void AIClient::sendChat(std::string const& message) {
     if (clean.empty()) return;
 
     this->send(
-        fmt::format("[PLAYER] {} ({})", clean, this->statusLine()),
+        fmt::format("[PLAYER] {} ({}){}", clean, this->statusLine(), grinNote()),
         fmt::format("You: {}", clean),
         true
     );
@@ -158,6 +165,7 @@ void AIClient::onLevelStart() {
         progress = fmt::format("best {}%, {} attempts so far", m_level.bestPercent, m_level.totalAttempts);
     }
     auto text = fmt::format("[GAME EVENT] The player just opened a level: {}. ({}.)", m_level.facts, progress);
+    text += grinNote();
     this->sendEvent(withNote(std::move(text), rules.onStart), "* Entered the level");
 }
 
@@ -184,7 +192,7 @@ void AIClient::onDeath(int percent, int attempt, bool practice, std::string cons
         auto text = oldBest == 0
             ? fmt::format("[GAME EVENT] NEW BEST: the player died at {}%{} on attempt {}, their first progress on this level.", percent, doing, attempt)
             : fmt::format("[GAME EVENT] NEW BEST: the player died at {}%{} on attempt {}, beating their old best of {}%.", percent, doing, attempt, oldBest);
-        text += rage::eventNote();
+        text += grinNote();
         this->sendEvent(withNote(std::move(text), rules.onNewBest), fmt::format("* New best: {}%", percent));
         return;
     }
@@ -216,7 +224,7 @@ void AIClient::onDeath(int percent, int attempt, bool practice, std::string cons
         text += fmt::format(" That's death number {} at {}% this session.", deathsHere, percent);
     }
     text += fmt::format(" {} deaths this session so far.", m_sessionDeaths);
-    text += rage::eventNote();
+    text += grinNote();
     if (auto hotspots = this->deathHotspots(); !hotspots.empty()) {
         text += fmt::format(" Most common death spots this session: {}.", hotspots);
     }
@@ -235,7 +243,7 @@ void AIClient::onRage(bool fought, bool won) {
     if (!m_active || !setting("auto-reactions")) return;
     if (!this->canSendEvent(Priority::Always)) return;
     std::string text =
-        "[GAME EVENT] Your anger hit 100/100 and you snapped: the screen went dark, you roared, lunged at the "
+        "[GAME EVENT] You struck: in the middle of their attempt the screen went dark, you roared, lunged at the "
         "glass from the inside and smashed the player's screen to pieces.";
     std::string display = "* " + this->getName() + " smashed your screen";
     if (fought && won) {
@@ -250,7 +258,14 @@ void AIClient::onRage(bool fought, bool won) {
     else {
         text += " Their screen is back now and your anger has dropped a little. Say something about what you just did.";
     }
+    text += grinNote();
     this->sendEvent(std::move(text), std::move(display));
+}
+
+void AIClient::onFight(std::string const& what) {
+    if (!m_active || !setting("auto-reactions")) return;
+    if (!this->canSendEvent(Priority::Always)) return;
+    this->sendEvent("[GAME EVENT] " + what, "* The fight");
 }
 
 void AIClient::onComplete(int attempt, bool practice) {
@@ -315,6 +330,8 @@ bool AIClient::canSendEvent(Priority priority) {
         case Priority::Important: return elapsed >= std::chrono::seconds(8);
         case Priority::CloseCall: return elapsed >= cooldown / 2;
         case Priority::Normal: {
+            // Grin runs the game through its replies, so it gets a word on most deaths
+            if (rage::active()) return elapsed >= std::min(cooldown / 2, std::chrono::seconds(6));
             if (elapsed < cooldown) return false;
             auto chance = intSetting("death-reaction-chance");
             return std::uniform_int_distribution<int64_t>(0, 99)(m_rng) < chance;
@@ -355,7 +372,8 @@ void AIClient::send(std::string text, std::string display, bool isChat) {
 
     ChatPayload payload;
     payload.persona = look.persona;
-    payload.system = prompt::system(look.persona, look.length, m_level.about);
+    payload.powers = look.character == "grin" ? haunt::powers() : "";
+    payload.system = prompt::system(look.persona, look.length, m_level.about, payload.powers);
     for (auto const& turn : m_memory) {
         payload.history.emplace_back(turn.fromAI, turn.text);
     }
@@ -388,7 +406,8 @@ void AIClient::send(std::string text, std::string display, bool isChat) {
 
 void AIClient::onResponse(Connection const& connection, web::WebResponse const& response, size_t maxChars, Turn userTurn, bool isChat) {
     auto look = profile::current();
-    auto result = providers::parseChat(connection, response, maxChars);
+    std::string commands;
+    auto result = providers::parseChat(connection, response, maxChars, &commands);
     if (result.isErr()) {
         auto error = result.unwrapErr();
         // Never log the request itself: it carries the player's API key
@@ -402,8 +421,11 @@ void AIClient::onResponse(Connection const& connection, web::WebResponse const& 
     }
 
     auto reply = result.unwrap();
-    this->remember(std::move(userTurn), reply);
-    SpeechBubble::show(look, reply);
+    bool grin = look.character == "grin";
+    // Its commands stay in its memory, so it knows what it has done
+    this->remember(std::move(userTurn), reply, grin && !commands.empty() ? fmt::format(" [DO: {}]", commands) : "");
+    if (reply != "...") SpeechBubble::show(look, reply);
+    if (grin && !commands.empty()) haunt::run(commands);
     this->notifyUpdate();
 }
 
@@ -436,10 +458,10 @@ std::string AIClient::missingSetup() const {
     return providers::loadCurrent().missing();
 }
 
-void AIClient::remember(Turn userTurn, std::string reply) {
+void AIClient::remember(Turn userTurn, std::string reply, std::string const& commands) {
     auto display = fmt::format("{}: {}", this->getName(), reply);
     m_memory.push_back(std::move(userTurn));
-    m_memory.push_back({ true, std::move(reply), std::move(display) });
+    m_memory.push_back({ true, reply + commands, std::move(display) });
 
     auto max = static_cast<size_t>(intSetting("memory-size"));
     while (m_memory.size() > max) {

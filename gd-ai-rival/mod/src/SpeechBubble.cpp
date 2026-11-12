@@ -62,7 +62,8 @@ void SpeechBubble::attach(SpeechBubble* bubble) {
     if (auto old = scene->getChildByID("speech-bubble"_spr)) {
         old->removeFromParent();
     }
-    scene->addChild(bubble, BUBBLE_Z);
+    // Over the screen break and the fight too, so Grin can taunt during them
+    scene->addChild(bubble, RageEvent::isActive() ? BUBBLE_Z + 2000 : BUBBLE_Z);
 }
 
 CCNode* SpeechBubble::createAvatar(BubbleStyle const& style) {

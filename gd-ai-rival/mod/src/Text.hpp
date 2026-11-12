@@ -2,6 +2,7 @@
 
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace text {
     // GD's bitmap fonts only have printable ASCII: drop everything else
@@ -11,6 +12,10 @@ namespace text {
     // Turn a raw model reply into something that fits the speech bubble:
     // ASCII punctuation, no markdown, no wrapping quotes, at most maxChars.
     std::string cleanReply(std::string_view reply, size_t maxChars = 220);
+
+    // Splits "Again. [DO: knock, crack]" into the spoken part and the
+    // commands ("knock, crack"); commands is empty when there are none
+    std::pair<std::string, std::string> splitCommands(std::string_view reply);
 
     // "sk-ant-api03-abc...wxyz" -> "sk-ant-*****wxyz", safe to show on screen
     std::string maskKey(std::string_view key);

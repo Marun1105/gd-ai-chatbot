@@ -268,6 +268,7 @@ web::WebFuture providers::sendChat(Connection const& connection, ChatPayload con
                 { "level_id", payload.levelID },
                 { "persona", payload.persona },
                 { "level", payload.levelAbout },
+                { "powers", payload.powers },
                 { "history", std::move(history) },
                 { "message", payload.message },
             });
@@ -276,7 +277,7 @@ web::WebFuture providers::sendChat(Connection const& connection, ChatPayload con
     }
 }
 
-Result<std::string, std::string> providers::parseChat(Connection const& connection, web::WebResponse const& response, size_t maxChars) {
+Result<std::string, std::string> providers::parseChat(Connection const& connection, web::WebResponse const& response, size_t maxChars, std::string* commands) {
     if (!response.ok()) {
         return Err(describeError(connection, response, false));
     }
@@ -314,7 +315,11 @@ Result<std::string, std::string> providers::parseChat(Connection const& connecti
         } break;
     }
 
-    auto reply = text::cleanReply(raw, maxChars);
+    // Commands come off first, so trimming the spoken line can't cut them
+    auto [spoken, found] = text::splitCommands(raw);
+    if (commands) *commands = text::toDisplayable(found);
+    auto reply = text::cleanReply(spoken, maxChars);
+    if (reply.empty() && !found.empty()) reply = "...";
     if (reply.empty()) {
         return Err(std::string("The AI had nothing to say. Try again."));
     }

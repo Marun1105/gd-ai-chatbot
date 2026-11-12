@@ -7,6 +7,7 @@
 #include "ChatPopup.hpp"
 #include "ConnectionPopup.hpp"
 #include "GameInfo.hpp"
+#include "Haunt.hpp"
 #include "Rage.hpp"
 #include "RageBar.hpp"
 #include "RageEvent.hpp"
@@ -117,6 +118,7 @@ class $modify(AIPlayLayer, PlayLayer) {
     }
 
     void watchForStrike(float dt) {
+        haunt::attach();
         // Sneak Attack: once its anger is full, Grin waits and strikes at a
         // random moment of a later attempt, right in the middle of playing
         if (!rage::armed() || RageEvent::isActive() || m_isPaused || m_hasCompletedLevel
@@ -145,6 +147,7 @@ class $modify(AIPlayLayer, PlayLayer) {
         auto bar = RageBar::create();
         auto winSize = CCDirector::get()->getWinSize();
         bar->setPosition({ 8.f, winSize.height - 6.f });
+        bar->setID("rage-bar"_spr);
         bar->setVisible(Mod::get()->getSettingValue<bool>("rage-bar"));
         m_uiLayer->addChild(bar, 10);
         m_fields->rageBar = bar;
@@ -153,6 +156,7 @@ class $modify(AIPlayLayer, PlayLayer) {
     void rageFinished(RageOutcome outcome) {
         // Beating Grin calms it completely; losing keeps it seething
         rage::afterSnap(outcome.fought ? (outcome.won ? 0.f : 60.f) : 35.f);
+        haunt::reset();
         if (m_fields->rageBar) m_fields->rageBar->refresh();
         if (m_fields->sneakStrike) {
             // It got you mid-run: that attempt is over
@@ -214,6 +218,7 @@ class $modify(AIPlayLayer, PlayLayer) {
             auto result = rage::onDeath(percent, m_attempts, m_isPracticeMode, m_isTestMode);
             if (m_fields->rageBar) m_fields->rageBar->refresh(result.gained > 0.f);
             snapped = result.snapped;
+            haunt::onDeath();
         }
 
         // The screen break gets its own comment once it's over
@@ -243,6 +248,7 @@ class $modify(AIPlayLayer, PlayLayer) {
         PlayLayer::levelComplete();
         if (m_fields->active && rage::active()) {
             rage::onComplete();
+            haunt::reset();
             if (m_fields->rageBar) m_fields->rageBar->refresh();
         }
         if (m_fields->active) {
@@ -255,6 +261,7 @@ class $modify(AIPlayLayer, PlayLayer) {
         if (m_fields->active) {
             AIClient::get().endLevel();
             rage::endLevel();
+            haunt::detach();
         }
         PlayLayer::onQuit();
     }

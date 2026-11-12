@@ -52,6 +52,8 @@ struct ChatPayload {
     std::string message;
     // Facts about the current level, for a proxy to put in its own system prompt
     std::string levelAbout;
+    // What the character can do to the game (Grin), for a proxy to append to its prompt
+    std::string powers;
     std::string playerID;
     int levelID = 0;
 };
@@ -76,8 +78,10 @@ namespace providers {
 
     geode::utils::web::WebFuture sendChat(Connection const& connection, ChatPayload const& payload);
     // The cleaned reply, or a short message explaining what went wrong
+    // commands: receives the reply's [DO: ...] command line, if the caller wants it
     geode::Result<std::string, std::string> parseChat(
-        Connection const& connection, geode::utils::web::WebResponse const& response, size_t maxChars = 220
+        Connection const& connection, geode::utils::web::WebResponse const& response, size_t maxChars = 220,
+        std::string* commands = nullptr
     );
 
     // A label for the model list, guessed from the model's name

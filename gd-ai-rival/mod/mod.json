@@ -134,7 +134,7 @@
 		"rage-bar": {
 			"type": "bool",
 			"name": "Anger Bar",
-			"description": "Shows how angry Grin is in the top-left corner of the level. Deaths fill it: a 1% death on your first tries barely counts, a 90%+ death on an extreme demon counts a lot, and dying at the same spot again and again counts more each time. New bests calm it down a little and beating the level calms it completely.",
+			"description": "Grin's anger, top-left. The AI playing Grin sets it, and deaths push it up on their own (far deaths on hard levels count most). The text under it says what Grin is doing at that level, and your screen shows it: <cy>knocking</c> from 25, <cy>cracking your screen</c> from 50, <cy>killing the lights</c> from 75, and when it is full, it strikes.",
 			"default": true
 		},
 		"rage-temper": {
@@ -152,6 +152,12 @@
 			"type": "bool",
 			"name": "Screen Break",
 			"description": "When the bar fills up, the screen goes dark, Grin roars and smashes your screen from the inside, and it shatters. The level waits until it is over. No flashing lights, but it is a scare: turn it off if you don't want that.",
+			"default": true
+		},
+		"grin-meddle": {
+			"type": "bool",
+			"name": "Grin Messes With the Level",
+			"description": "The AI playing Grin controls your game: with its replies it knocks on the glass, cracks your screen, flickers the lights, peeks in and sets its own anger bar. With this on it can also make the level harder for a few seconds: <cy>mirror</c> the screen, <cy>tilt</c> it, <cy>zoom</c> in, or black it out for a second. Turn off to keep only the scares.",
 			"default": true
 		},
 		"rage-sneak": {

@@ -37,7 +37,9 @@ namespace {
         "check its creator and difficulty before assuming. Never invent details about a level you don't actually know.";
 }
 
-std::string prompt::system(std::string const& persona, ReplyLength length, std::string const& levelAbout) {
+std::string prompt::system(
+    std::string const& persona, ReplyLength length, std::string const& levelAbout, std::string const& powers
+) {
     auto level = levelAbout.empty()
         ? std::string()
         : fmt::format("\nThe level being played right now:\n{}\n", levelAbout);
@@ -71,7 +73,7 @@ std::string prompt::system(std::string const& persona, ReplyLength length, std::
         "- If the player asks about something unrelated to the game, answer briefly and in character.\n"
         "\n"
         "Character description:\n"
-        "{}",
-        GD_PRIMER, level, lengthRule(length), persona
+        "{}{}",
+        GD_PRIMER, level, lengthRule(length), persona, powers
     );
 }

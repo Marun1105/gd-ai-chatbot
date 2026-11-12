@@ -147,6 +147,17 @@ void rage::afterSnap(float anger) {
     s_spots.clear();
 }
 
+void rage::set(float anger) {
+    s_anger = std::clamp(anger, 0.f, MAX);
+    if (s_anger >= MAX) {
+        if (Mod::get()->getSettingValue<bool>("rage-jumpscare")) s_armed = true;
+        else s_anger = MAX - 1.f;
+    }
+    else {
+        s_armed = false;
+    }
+}
+
 bool rage::armed() {
     return s_armed;
 }
@@ -164,19 +175,19 @@ float rage::level() {
 }
 
 char const* rage::mood() {
-    if (s_armed) return "watching you";
-    if (s_anger < 20.f) return "calm";
-    if (s_anger < 40.f) return "irritated";
-    if (s_anger < 60.f) return "angry";
-    if (s_anger < 80.f) return "furious";
-    return "about to snap";
+    // What it's doing to your screen at this level, so the bar reads as a warning
+    if (s_armed) return "IT'S COMING";
+    if (s_anger < 25.f) return "watching";
+    if (s_anger < 50.f) return "knocking";
+    if (s_anger < 75.f) return "cracking your screen";
+    return "killing the lights";
 }
 
 std::string rage::eventNote() {
     if (!active()) return "";
     if (s_armed) {
-        return " Your anger is at 100/100 and you've decided to strike at a moment they won't see coming."
-               " Keep it secret: sound calm, almost friendly, with only a hint that something is coming.";
+        return " Your anger bar is full and you are about to strike, any second now, in the middle of their attempt."
+               " Don't announce it: sound calm, almost friendly, with only a hint that something is coming.";
     }
-    return fmt::format(" Your anger is now {}/100 ({}).", static_cast<int>(s_anger), mood());
+    return fmt::format(" Your anger bar is at {}/100 (the bar tells the player you are \"{}\").", static_cast<int>(s_anger), mood());
 }

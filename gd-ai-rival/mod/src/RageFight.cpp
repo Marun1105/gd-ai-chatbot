@@ -1,5 +1,7 @@
 #include "RageFight.hpp"
+#include "AIClient.hpp"
 #include "GrinLook.hpp"
+#include "Haunt.hpp"
 #include "RageEvent.hpp"
 
 #include <algorithm>
@@ -132,6 +134,10 @@ bool RageFight::init(std::function<void(Result)> onDone) {
         m_grin->addChild(m_grinFlash, 1);
     }
 
+    // Its "dark" attack: the arena goes black and only the glass it throws shows
+    m_darkness = CCLayerColor::create({ 0, 0, 0, 0 }, m_win.width, m_win.height);
+    this->addChild(m_darkness, 1);
+
     m_shardLayer = CCNode::create();
     this->addChild(m_shardLayer, 2);
 
@@ -220,6 +226,14 @@ void RageFight::begin() {
     fight->setPosition(m_win / 2 + CCPoint(0.f, m_win.height * .2f));
     fight->runAction(CCSequence::create(CCDelayTime::create(.5f), CCFadeOut::create(.25f), CCRemoveSelf::create(), nullptr));
     this->addChild(fight, 8);
+
+    // The AI playing Grin taunts, and can still change its plan of attack
+    AIClient::get().onFight(fmt::format(
+        "The boss fight has begun: the player is inside the broken screen with you, shooting at you. They have {} "
+        "hearts and {} seconds. Taunt them in one short line{}.",
+        PLAYER_HEARTS, static_cast<int>(FIGHT_TIME),
+        haunt::fightPlan().empty() ? ", and choose your attacks with a plan command" : "; your attack plan is running"
+    ));
 }
 
 float RageFight::chargeDuration() const {
@@ -361,9 +375,45 @@ void RageFight::enrage() {
     this->addChild(banner, 8);
     this->sparks(m_grin->getPosition(), ccc4f(1.f, .3f, .1f, 1.f), 30, 160.f, .6f);
     m_nextShard = 1.f;
+
+    AIClient::get().onFight(fmt::format(
+        "The fight: the player has shot you down to half health and you are enraged now, faster and throwing glass. "
+        "They have {} of {} hearts left and {} seconds. One short furious line; you may send a new plan.",
+        m_playerHearts, PLAYER_HEARTS, static_cast<int>(m_timeLeft)
+    ));
+}
+
+void RageFight::darken() {
+    m_darkTime = 2.2f;
+    playSound("grin-snigger.ogg"_spr);
+}
+
+void RageFight::planMove() {
+    auto const& plan = haunt::fightPlan();
+    if (plan.empty()) return;
+    auto const& move = plan[m_planIndex++ % plan.size()];
+    m_nextMove = m_enraged ? randomIn(.7f, 1.2f) : randomIn(1.3f, 2.f);
+
+    if (move == "charge") this->startCharge();
+    else if (move == "feint") {
+        // Starts like a charge, then breaks off into a dash
+        this->startCharge();
+        m_feint = true;
+    }
+    else if (move == "dash") this->dash();
+    else if (move == "shards") this->throwShard();
+    else if (move == "swarm") {
+        for (int i = 0; i < 3; i++) this->throwShard();
+        m_nextMove += .6f;
+    }
+    else if (move == "dark") {
+        this->darken();
+        this->throwShard();
+    }
 }
 
 void RageFight::startCharge() {
+    m_feint = false;
     m_charging = true;
     m_chargeTime = 0.f;
     m_chargeHits = 0;
@@ -627,7 +677,17 @@ void RageFight::update(float dt) {
 
         if (m_charging) {
             m_chargeTime += dt;
-            if (m_chargeTime >= this->chargeDuration()) this->chargeLanded();
+            if (m_feint && m_chargeTime >= this->chargeDuration() * .55f) {
+                m_feint = false;
+                m_charging = false;
+                this->dash();
+            }
+            else if (m_chargeTime >= this->chargeDuration()) this->chargeLanded();
+        }
+        else if (m_dashTime < 0.f && !haunt::fightPlan().empty()) {
+            // The AI's plan of attack, one move after another
+            m_nextMove -= dt;
+            if (m_nextMove <= 0.f) this->planMove();
         }
         else if (m_dashTime < 0.f) {
             m_nextCharge -= dt;
@@ -635,12 +695,21 @@ void RageFight::update(float dt) {
             if (m_nextCharge <= 0.f) this->startCharge();
             else if (m_nextDash <= 0.f) this->dash();
         }
-        if (m_enraged) {
+        if (m_enraged && haunt::fightPlan().empty()) {
             m_nextShard -= dt;
             if (m_nextShard <= 0.f) this->throwShard();
         }
         this->updateShards(dt);
         if (m_state != State::Fight) return;
+    }
+
+    // Its darkness fades in fast and lifts slowly
+    if (m_darkTime > 0.f || m_darkness->getOpacity() > 0) {
+        m_darkTime = std::max(0.f, m_darkTime - dt);
+        float target = m_state == State::Fight && m_darkTime > 0.f ? 240.f : 0.f;
+        float now = static_cast<float>(m_darkness->getOpacity());
+        now += (target - now) * std::min(1.f, dt * (target > now ? 12.f : 4.f));
+        m_darkness->setOpacity(toByte(target == 0.f && now < 3.f ? 0.f : now));
     }
 
     // The dash itself: fast out, easing into its new spot

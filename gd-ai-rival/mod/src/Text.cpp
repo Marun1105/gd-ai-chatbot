@@ -90,3 +90,25 @@ std::string text::maskKey(std::string_view key) {
     if (prefix == 0) prefix = 4;
     return std::string(key.substr(0, prefix)) + "*****" + std::string(key.substr(key.size() - 4));
 }
+
+std::pair<std::string, std::string> text::splitCommands(std::string_view reply) {
+    std::string spoken(reply), commands;
+    // Every [DO: ...] block is taken out, wherever the model put it
+    for (;;) {
+        size_t start = std::string::npos;
+        for (size_t i = 0; i + 3 < spoken.size(); i++) {
+            if (spoken[i] == '[' && (spoken[i + 1] == 'D' || spoken[i + 1] == 'd')
+                && (spoken[i + 2] == 'O' || spoken[i + 2] == 'o') && (spoken[i + 3] == ':' || spoken[i + 3] == ' ')) {
+                start = i;
+                break;
+            }
+        }
+        if (start == std::string::npos) break;
+        auto end = spoken.find(']', start);
+        auto inner = spoken.substr(start + 4, end == std::string::npos ? std::string::npos : end - start - 4);
+        if (!commands.empty()) commands += ", ";
+        commands += inner;
+        spoken.erase(start, end == std::string::npos ? std::string::npos : end - start + 1);
+    }
+    return { spoken, commands };
+}

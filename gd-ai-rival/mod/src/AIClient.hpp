@@ -54,6 +54,8 @@ public:
     void onDeath(int percent, int attempt, bool practice, std::string const& situation, bool silent = false);
     // Grin just smashed the screen (and maybe the player fought it)
     void onRage(bool fought, bool won);
+    // A moment in the boss fight Grin should react to (and may re-plan for)
+    void onFight(std::string const& what);
     void onComplete(int attempt, bool practice);
 
     bool isWaiting() const;
@@ -95,7 +97,7 @@ private:
     );
     // Counts one message against the daily limit; false when the limit is used up
     bool takeDailyMessage();
-    void remember(Turn userTurn, std::string reply);
+    void remember(Turn userTurn, std::string reply, std::string const& commands = "");
     void notifyUpdate();
     std::string statusLine() const;
     // "63% (4x), 41% (3x)" for this session, or empty
